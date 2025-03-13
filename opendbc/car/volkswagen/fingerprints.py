@@ -76,6 +76,7 @@ FW_VERSIONS = {
       b'\xf1\x8703H906026S \xf1\x899972',
       b'\xf1\x873CN906259  \xf1\x890005',
       b'\xf1\x873CN906259F \xf1\x890002',
+      b'\xf1\x873CN906259K \xf1\x890002',
     ],
     (Ecu.transmission, 0x7e1, None): [
       b'\xf1\x8709G927158A \xf1\x893387',
@@ -84,6 +85,7 @@ FW_VERSIONS = {
       b'\xf1\x8709G927158EN\xf1\x893691',
       b'\xf1\x8709G927158F \xf1\x893489',
       b'\xf1\x8709G927158FT\xf1\x893835',
+      b'\xf1\x8709G927158GK\xf1\x893941',
       b'\xf1\x8709G927158GL\xf1\x893939',
     ],
     (Ecu.srs, 0x715, None): [
@@ -93,6 +95,7 @@ FW_VERSIONS = {
       b'\xf1\x873Q0959655DB\xf1\x890720\xf1\x82\x0e2214152212001105141122052900',
       b'\xf1\x873Q0959655DM\xf1\x890732\xf1\x82\x0e1114151112001105111122052J00',
       b'\xf1\x873Q0959655DM\xf1\x890732\xf1\x82\x0e1114151112001105161122052J00',
+      b'\xf1\x873Q0959655DM\xf1\x890732\xf1\x82\x0e1115151112001105121122052J00',
       b'\xf1\x873Q0959655DM\xf1\x890732\xf1\x82\x0e1115151112001105171122052J00',
     ],
     (Ecu.eps, 0x712, None): [
@@ -349,13 +352,16 @@ FW_VERSIONS = {
   CAR.VOLKSWAGEN_JETTA_MK6: {
     (Ecu.srs, 0x715, None): [
       b'\xf1\x875C0959655M \xf1\x890726\xf1\x82\t00NB1108--------24',
+      b'\xf1\x875K0959655H \xf1\x890724\xf1\x82\t00131108--------02',
     ],
     (Ecu.fwdRadar, 0x757, None): [
       b'\xf1\x877N0907572C \xf1\x890211\xf1\x82\x0151',
+      b'\xf1\x877N0907572C \xf1\x890211\xf1\x82\x0152',
     ],
   },
   CAR.VOLKSWAGEN_JETTA_MK7: {
     (Ecu.engine, 0x7e0, None): [
+      b'\xf1\x8704E906024AF\xf1\x899970',
       b'\xf1\x8704E906024AK\xf1\x899937',
       b'\xf1\x8704E906024AS\xf1\x899912',
       b'\xf1\x8704E906024B \xf1\x895594',
