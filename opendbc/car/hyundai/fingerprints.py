@@ -49,12 +49,14 @@ FW_VERSIONS = {
       b'\xf1\x00AEhe SCC H-CUP      1.01 1.01 96400-G2100         ',
     ],
     (Ecu.eps, 0x7d4, None): [
+      b'\xf1\x00AE  MDPS C 1.00 1.03 56310/G2300 4AEHC103',
       b'\xf1\x00AE  MDPS C 1.00 1.05 56310/G2501 4AEHC105',
       b'\xf1\x00AE  MDPS C 1.00 1.07 56310/G2301 4AEHC107',
       b'\xf1\x00AE  MDPS C 1.00 1.07 56310/G2501 4AEHC107',
     ],
     (Ecu.fwdCamera, 0x7c4, None): [
       b'\xf1\x00AEH MFC  AT EUR LHD 1.00 1.00 95740-G2400 180222',
+      b'\xf1\x00AEH MFC  AT EUR LHD 1.00 1.00 95740-G7200 160418',
       b'\xf1\x00AEH MFC  AT USA LHD 1.00 1.00 95740-G2400 180222',
     ],
   },
@@ -141,6 +143,7 @@ FW_VERSIONS = {
       b'\xf1\x00AEhe SCC FHCUP      1.00 1.00 99110-G2600         ',
     ],
     (Ecu.eps, 0x7d4, None): [
+      b'\xf1\x00AE  MDPS C 1.00 1.01 56310/G2510 4APHC101',
       b'\xf1\x00AE  MDPS C 1.00 1.01 56310G2510\x00 4APHC101',
     ],
     (Ecu.fwdCamera, 0x7c4, None): [
@@ -171,6 +174,7 @@ FW_VERSIONS = {
     (Ecu.eps, 0x7d4, None): [
       b'\xf1\x00DN8 MDPS C 1,00 1,01 56310L0010\x00 4DNAC101',
       b'\xf1\x00DN8 MDPS C 1.00 1.01 56310-L0010 4DNAC101',
+      b'\xf1\x00DN8 MDPS C 1.00 1.01 56310-L0200 4DNAC101',
       b'\xf1\x00DN8 MDPS C 1.00 1.01 56310-L0200 4DNAC102',
       b'\xf1\x00DN8 MDPS C 1.00 1.01 56310-L0210 4DNAC101',
       b'\xf1\x00DN8 MDPS C 1.00 1.01 56310-L0210 4DNAC102',
@@ -385,6 +389,7 @@ FW_VERSIONS = {
   CAR.HYUNDAI_PALISADE: {
     (Ecu.fwdRadar, 0x7d0, None): [
       b'\xf1\x00LX2 SCC FHCUP      1.00 1.04 99110-S8100         ',
+      b'\xf1\x00LX2_ SCC F-CUP      1.00 1.00 99110-S8110         ',
       b'\xf1\x00LX2_ SCC F-CUP      1.00 1.04 99110-S8100         ',
       b'\xf1\x00LX2_ SCC F-CUP      1.00 1.05 99110-S8100         ',
       b'\xf1\x00LX2_ SCC FHCU-      1.00 1.05 99110-S8100         ',
@@ -392,6 +397,7 @@ FW_VERSIONS = {
       b'\xf1\x00LX2_ SCC FHCUP      1.00 1.03 99110-S8100         ',
       b'\xf1\x00LX2_ SCC FHCUP      1.00 1.04 99110-S8100         ',
       b'\xf1\x00LX2_ SCC FHCUP      1.00 1.05 99110-S8100         ',
+      b'\xf1\x00ON__ FCA FHCU-      1.00 1.00 99110-S9110         ',
       b'\xf1\x00ON__ FCA FHCUP      1.00 1.00 99110-S9110         ',
       b'\xf1\x00ON__ FCA FHCUP      1.00 1.01 99110-S9110         ',
       b'\xf1\x00ON__ FCA FHCUP      1.00 1.02 99110-S9100         ',
@@ -421,6 +427,7 @@ FW_VERSIONS = {
       b'\xf1\x00LX2 MDPS C 1.00 1.03 56310-S8000 4LXDC103',
       b'\xf1\x00LX2 MDPS C 1.00 1.03 56310-S8020 4LXDC103',
       b'\xf1\x00LX2 MDPS C 1.00 1.03 56310-XX000 4LXDC103',
+      b'\xf1\x00LX2 MDPS C 1.00 1.04 56310-S8000 4LXDC104',
       b'\xf1\x00LX2 MDPS C 1.00 1.04 56310-S8020 4LXDC104',
       b'\xf1\x00LX2 MDPS C 1.00 1.04 56310-S8420 4LXDC104',
       b'\xf1\x00LX2 MDPS R 1.00 1.02 56370-S8300 9318',
@@ -536,16 +543,20 @@ FW_VERSIONS = {
   },
   CAR.KIA_CEED: {
     (Ecu.fwdRadar, 0x7d0, None): [
+      b'\xf1\x00CD__ SCC F-CUP      1.00 1.00 99110-J7500         ',
       b'\xf1\x00CD__ SCC F-CUP      1.00 1.02 99110-J7000         ',
     ],
     (Ecu.eps, 0x7d4, None): [
       b'\xf1\x00CD  MDPS C 1.00 1.06 56310-XX000 4CDEC106',
+      b'\xf1\x00CDT MDPS C 1.00 1.00 56310-XX000 4CDTC100',
     ],
     (Ecu.fwdCamera, 0x7c4, None): [
       b'\xf1\x00CD  LKAS AT EUR LHD 1.00 1.01 99211-J7000 B40',
+      b'\xf1\x00CDT LKAS AT EUR LHD 1.00 1.01 99211-J7210 521',
     ],
     (Ecu.abs, 0x7d1, None): [
       b'\xf1\x00CD ESC \x03 102\x18\x08\x05 58920-J7350',
+      b'\xf1\x00CD ESC \x0b 101 \x10\x03 58910-J7AC0',
     ],
   },
   CAR.KIA_FORTE: {
@@ -575,6 +586,7 @@ FW_VERSIONS = {
     (Ecu.eps, 0x7d4, None): [
       b'\xf1\x00DL3 MDPS C 1.00 1.01 56310-L3110 4DLAC101',
       b'\xf1\x00DL3 MDPS C 1.00 1.01 56310-L3220 4DLAC101',
+      b'\xf1\x00DL3 MDPS C 1.00 1.01 56310L3220\x00 4DLAC101',
       b'\xf1\x00DL3 MDPS C 1.00 1.02 56310-L2220 4DLDC102',
       b'\xf1\x00DL3 MDPS C 1.00 1.02 56310L3220\x00 4DLAC102',
       b'\xf1\x00DL3 MDPS R 1.00 1.02 57700-L3000 4DLAP102',
@@ -589,6 +601,7 @@ FW_VERSIONS = {
       b'\xf1\x00DL ESC \x01 104 \x07\x12 58910-L2200',
       b'\xf1\x00DL ESC \x03 100 \x08\x02 58910-L3600',
       b'\xf1\x00DL ESC \x06 101 \x04\x02 58910-L3200',
+      b'\xf1\x00DL ESC \x06 102 \x07\x02 58910-L3200',
       b'\xf1\x00DL ESC \x06 103"\x08\x06 58910-L3200',
       b'\xf1\x00DL ESC \t 100 \x06\x02 58910-L3800',
       b'\xf1\x00DL ESC \t 101 \x07\x02 58910-L3800',
@@ -626,6 +639,7 @@ FW_VERSIONS = {
       b'\xf1\x00OSE LKAS AT EUR LHD 1.00 1.00 95740-K4100 W40',
       b'\xf1\x00OSE LKAS AT EUR RHD 1.00 1.00 95740-K4100 W40',
       b'\xf1\x00OSE LKAS AT KOR LHD 1.00 1.00 95740-K4100 W40',
+      b'\xf1\x00OSE LKAS AT KOR LHD 1.00 1.00 95740-K4300 W50',
       b'\xf1\x00OSE LKAS AT USA LHD 1.00 1.00 95740-K4100 W40',
       b'\xf1\x00OSE LKAS AT USA LHD 1.00 1.00 95740-K4300 W50',
     ],
@@ -635,6 +649,7 @@ FW_VERSIONS = {
       b'\xf1\x00OS  MDPS C 1.00 1.04 56310/K4550 4OEDC104',
       b'\xf1\x00OS  MDPS C 1.00 1.04 56310K4000\x00 4OEDC104',
       b'\xf1\x00OS  MDPS C 1.00 1.04 56310K4050\x00 4OEDC104',
+      b'\xf1\x00OS  MDPS C 1.00 1.05 56310K4000\x00 4OEDC105',
     ],
     (Ecu.fwdRadar, 0x7d0, None): [
       b'\xf1\x00OSev SCC F-CUP      1.00 1.00 99110-K4000         ',
@@ -754,6 +769,7 @@ FW_VERSIONS = {
     (Ecu.fwdCamera, 0x7c4, None): [
       b'\xf1\x00DEH MFC  AT KOR LHD 1.00 1.04 99211-G5000 190516',
       b'\xf1\x00DEH MFC  AT USA LHD 1.00 1.00 99211-G5500 210428',
+      b'\xf1\x00DEH MFC  AT USA LHD 1.00 1.06 99211-G5000 201028',
       b'\xf1\x00DEH MFC  AT USA LHD 1.00 1.07 99211-G5000 201221',
     ],
     (Ecu.fwdRadar, 0x7d0, None): [
@@ -798,6 +814,7 @@ FW_VERSIONS = {
     (Ecu.abs, 0x7d1, None): [
       b"\xf1\x00JF ESC \t 11 \x18\x03' 58920-D5260",
       b'\xf1\x00JF ESC \x0b 11 \x18\x030 58920-D5180',
+      b'\xf1\x00JF ESC \x0c 11 \x18\x030 58920-D5180',
     ],
     (Ecu.fwdCamera, 0x7c4, None): [
       b'\xf1\x00JFA LKAS AT USA LHD 1.00 1.00 95895-D5001 h32',
@@ -983,11 +1000,14 @@ FW_VERSIONS = {
       b'\xf1\x00NE1 MFC  AT EUR LHD 1.00 1.00 99211-GI100 230915',
       b'\xf1\x00NE1 MFC  AT EUR LHD 1.00 1.01 99211-GI010 211007',
       b'\xf1\x00NE1 MFC  AT EUR LHD 1.00 1.01 99211-GI100 240110',
+      b'\xf1\x00NE1 MFC  AT EUR LHD 1.00 1.03 99211-GI010 220401',
       b'\xf1\x00NE1 MFC  AT EUR LHD 1.00 1.06 99211-GI000 210813',
       b'\xf1\x00NE1 MFC  AT EUR LHD 1.00 1.06 99211-GI010 230110',
       b'\xf1\x00NE1 MFC  AT EUR RHD 1.00 1.01 99211-GI010 211007',
       b'\xf1\x00NE1 MFC  AT EUR RHD 1.00 1.02 99211-GI010 211206',
+      b'\xf1\x00NE1 MFC  AT IND RHD 1.00 1.07 99211-GI010 230620',
       b'\xf1\x00NE1 MFC  AT KOR LHD 1.00 1.00 99211-GI020 230719',
+      b'\xf1\x00NE1 MFC  AT KOR LHD 1.00 1.01 99211-GI010 211007',
       b'\xf1\x00NE1 MFC  AT KOR LHD 1.00 1.05 99211-GI010 220614',
       b'\xf1\x00NE1 MFC  AT USA LHD 1.00 1.00 99211-GI020 230719',
       b'\xf1\x00NE1 MFC  AT USA LHD 1.00 1.00 99211-GI100 230915',
@@ -1001,12 +1021,14 @@ FW_VERSIONS = {
   CAR.HYUNDAI_IONIQ_6: {
     (Ecu.fwdRadar, 0x7d0, None): [
       b'\xf1\x00CE__ RDR -----      1.00 1.01 99110-KL000         ',
+      b'\xf1\x00CE__ RDR -----      1.00 1.02 99110-KL000         ',
     ],
     (Ecu.fwdCamera, 0x7c4, None): [
       b'\xf1\x00CE  MFC  AT CAN LHD 1.00 1.04 99211-KL000 221213',
       b'\xf1\x00CE  MFC  AT EUR LHD 1.00 1.03 99211-KL000 221011',
       b'\xf1\x00CE  MFC  AT EUR LHD 1.00 1.04 99211-KL000 221213',
       b'\xf1\x00CE  MFC  AT USA LHD 1.00 1.04 99211-KL000 221213',
+      b'\xf1\x00CE  MFC  AT USA LHD 1.00 1.06 99211-KL000 230915',
     ],
   },
   CAR.HYUNDAI_TUCSON_4TH_GEN: {
@@ -1073,6 +1095,7 @@ FW_VERSIONS = {
   },
   CAR.GENESIS_GV70_ELECTRIFIED_1ST_GEN: {
     (Ecu.fwdCamera, 0x7c4, None): [
+      b'\xf1\x00JK1EMFC  AT AUS RHD 1.00 1.01 99211-DS100 220125',
       b'\xf1\x00JK1EMFC  AT USA LHD 1.00 1.00 99211-IT100 220919',
     ],
     (Ecu.fwdRadar, 0x7d0, None): [
@@ -1137,6 +1160,7 @@ FW_VERSIONS = {
   CAR.KIA_CARNIVAL_4TH_GEN: {
     (Ecu.fwdCamera, 0x7c4, None): [
       b'\xf1\x00KA4 MFC  AT EUR LHD 1.00 1.06 99210-R0000 220221',
+      b'\xf1\x00KA4 MFC  AT KOR LHD 1.00 1.05 99210-R0000 201221',
       b'\xf1\x00KA4 MFC  AT KOR LHD 1.00 1.06 99210-R0000 220221',
       b'\xf1\x00KA4 MFC  AT USA LHD 1.00 1.00 99210-R0100 230105',
       b'\xf1\x00KA4 MFC  AT USA LHD 1.00 1.01 99210-R0100 230710',

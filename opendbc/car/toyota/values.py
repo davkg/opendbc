@@ -3,7 +3,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum, IntFlag
 
-from opendbc.car import CarSpecs, PlatformConfig, Platforms, AngleRateLimit, dbc_dict
+from opendbc.car import Bus, CarSpecs, PlatformConfig, Platforms, AngleRateLimit
 from opendbc.car.common.conversions import Conversions as CV
 from opendbc.car.structs import CarParams
 from opendbc.car.docs_definitions import CarFootnote, CarDocs, Column, CarParts, CarHarness
@@ -73,6 +73,8 @@ class ToyotaCarDocs(CarDocs):
   package: str = "All"
   car_parts: CarParts = field(default_factory=CarParts.common([CarHarness.toyota_a]))
 
+def dbc_dict(pt, radar):
+  return {Bus.pt: pt, Bus.radar: radar}
 
 @dataclass
 class ToyotaTSS2PlatformConfig(PlatformConfig):
@@ -82,7 +84,20 @@ class ToyotaTSS2PlatformConfig(PlatformConfig):
     self.flags |= ToyotaFlags.TSS2 | ToyotaFlags.NO_STOP_TIMER | ToyotaFlags.NO_DSU
 
     if self.flags & ToyotaFlags.RADAR_ACC:
-      self.dbc_dict = dbc_dict('toyota_nodsu_pt_generated', None)
+      self.dbc_dict = {Bus.pt: 'toyota_nodsu_pt_generated'}
+
+@dataclass
+class ToyotaSecOCPlatformConfig(PlatformConfig):
+  dbc_dict: dict = field(default_factory=lambda: dbc_dict('toyota_secoc_pt_generated', 'toyota_tss2_adas'))
+
+  def init(self):
+    # don't expose car docs until SecOC cars can be suppressed from the comma website
+    self.car_docs = []
+
+    self.flags |= ToyotaFlags.TSS2 | ToyotaFlags.NO_STOP_TIMER | ToyotaFlags.NO_DSU | ToyotaFlags.SECOC
+
+    if self.flags & ToyotaFlags.RADAR_ACC:
+      self.dbc_dict = {Bus.pt: 'toyota_secoc_pt_generated'}
 
 
 class CAR(Platforms):
@@ -243,18 +258,14 @@ class CAR(Platforms):
   TOYOTA_RAV4_TSS2_2023 = ToyotaTSS2PlatformConfig(
     [
       ToyotaCarDocs("Toyota RAV4 2023-24"),
-      ToyotaCarDocs("Toyota RAV4 Hybrid 2023-24"),
+      ToyotaCarDocs("Toyota RAV4 Hybrid 2023-25", video_link="https://youtu.be/4eIsEq4L4Ng"),
     ],
     TOYOTA_RAV4_TSS2.specs,
     flags=ToyotaFlags.RADAR_ACC | ToyotaFlags.ANGLE_CONTROL,
   )
-  TOYOTA_RAV4_PRIME = PlatformConfig(
-    # TODO: Enable this docs entry when it can be suppressed from openpilot CARS.md
-    # [ToyotaCarDocs("Toyota RAV4 Prime 2021-23", min_enable_speed=MIN_ACC_SPEED)],
-    [],
+  TOYOTA_RAV4_PRIME = ToyotaSecOCPlatformConfig(
+    [ToyotaCarDocs("Toyota RAV4 Prime 2021-23", min_enable_speed=MIN_ACC_SPEED)],
     CarSpecs(mass=4372. * CV.LB_TO_KG, wheelbase=2.68, steerRatio=16.88, tireStiffnessFactor=0.5533),
-    dbc_dict('toyota_rav4_prime_generated', 'toyota_tss2_adas'),
-    flags=ToyotaFlags.TSS2 | ToyotaFlags.NO_STOP_TIMER | ToyotaFlags.NO_DSU | ToyotaFlags.SECOC,
   )
   TOYOTA_MIRAI = ToyotaTSS2PlatformConfig( # TSS 2.5
     [ToyotaCarDocs("Toyota Mirai 2021")],
@@ -266,13 +277,9 @@ class CAR(Platforms):
     dbc_dict('toyota_tnga_k_pt_generated', 'toyota_adas'),
     flags=ToyotaFlags.NO_STOP_TIMER,
   )
-  TOYOTA_SIENNA_4TH_GEN = PlatformConfig(
-    # TODO: Enable this docs entry when it can be suppressed from openpilot CARS.md
-    # [ToyotaCarDocs("Toyota Sienna 2021-23", min_enable_speed=MIN_ACC_SPEED)],
-    [],
+  TOYOTA_SIENNA_4TH_GEN = ToyotaSecOCPlatformConfig(
+    [ToyotaCarDocs("Toyota Sienna 2021-23", min_enable_speed=MIN_ACC_SPEED)],
     CarSpecs(mass=4625. * CV.LB_TO_KG, wheelbase=3.06, steerRatio=17.8, tireStiffnessFactor=0.444),
-    dbc_dict('toyota_rav4_prime_generated', 'toyota_tss2_adas'),
-    flags=ToyotaFlags.TSS2 | ToyotaFlags.NO_STOP_TIMER | ToyotaFlags.NO_DSU | ToyotaFlags.SECOC,
   )
 
   # Lexus
@@ -292,7 +299,7 @@ class CAR(Platforms):
   LEXUS_ES_TSS2 = ToyotaTSS2PlatformConfig(
     [
       ToyotaCarDocs("Lexus ES 2019-24"),
-      ToyotaCarDocs("Lexus ES Hybrid 2019-24", video_link="https://youtu.be/BZ29osRVJeg?t=12"),
+      ToyotaCarDocs("Lexus ES Hybrid 2019-25", video_link="https://youtu.be/BZ29osRVJeg?t=12"),
     ],
     LEXUS_ES.specs,
   )
