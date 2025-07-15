@@ -7,12 +7,11 @@ from opendbc.car.fca_giorgio.values import CANBUS, CarControllerParams
 
 class CarController(CarControllerBase):
   def __init__(self, dbc_names, CP):
-    self.CP = CP
+    super().__init__(dbc_names, CP)
     self.CCP = CarControllerParams(CP)
     self.packer_pt = CANPacker(dbc_names[Bus.pt])
 
     self.apply_steer_last = 0
-    self.frame = 0
 
   def update(self, CC, CS, now_nanos):
     actuators = CC.actuators
