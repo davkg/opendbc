@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 
-from opendbc.car import dbc_dict, CarSpecs, DbcDict, PlatformConfig, Platforms
+from opendbc.car import Bus, CarSpecs, DbcDict, PlatformConfig, Platforms
 from opendbc.car.structs import CarParams
 from opendbc.car.docs_definitions import CarHarness, CarDocs, CarParts
 from opendbc.car.fw_query_definitions import FwQueryConfig, Request, StdQueries
@@ -30,7 +30,9 @@ class CANBUS:
 
 @dataclass
 class FcaGiorgioPlatformConfig(PlatformConfig):
-  dbc_dict: DbcDict = field(default_factory=lambda: dbc_dict('fca_giorgio', None))
+  dbc_dict: DbcDict = field(default_factory=lambda: {
+    Bus.pt: 'fca_giorgio',
+  })
 
 
 @dataclass(frozen=True, kw_only=True)

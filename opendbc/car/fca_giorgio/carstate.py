@@ -1,7 +1,7 @@
 import numpy as np
 from opendbc.car.common.conversions import Conversions as CV
 from opendbc.can.parser import CANParser
-from opendbc.car import structs
+from opendbc.car import Bus, structs
 from opendbc.car.interfaces import CarStateBase
 from opendbc.car.fca_giorgio.values import DBC, CANBUS, CarControllerParams
 
@@ -14,7 +14,9 @@ class CarState(CarStateBase):
     self.frame = 0
     self.CCP = CarControllerParams(CP)
 
-  def update(self, pt_cp, cam_cp, *_):
+  def update(self, can_parsers):
+    pt_cp = can_parsers[Bus.pt]
+    cam_cp = can_parsers[Bus.cam]
     ret = structs.CarState()
     # Update vehicle speed and acceleration from ABS wheel speeds.
     ret.wheelSpeeds = self.get_wheel_speeds(
@@ -63,8 +65,8 @@ class CarState(CarStateBase):
 
 
   @staticmethod
-  def get_can_parser(CP):
-    messages = [
+  def get_can_parsers(CP):
+    pt_messages = [
       # sig_address, frequency
       ("ABS_1", 100),
       ("ABS_2", 100),
@@ -77,12 +79,9 @@ class CarState(CarStateBase):
       ("ACC_1", 12),  # 12hz inactive / 50hz active
       ("BCM_1", 4),  # 4Hz plus triggered updates
     ]
+    cam_messages = []
 
-    return CANParser(DBC[CP.carFingerprint]["pt"], messages, CANBUS.pt)
-
-
-  @staticmethod
-  def get_cam_can_parser(CP):
-    messages = []
-
-    return CANParser(DBC[CP.carFingerprint]["pt"], messages, CANBUS.cam)
+    return {
+      Bus.pt: CANParser(DBC[CP.carFingerprint][Bus.pt], pt_messages, CANBUS.pt),
+      Bus.cam: CANParser(DBC[CP.carFingerprint][Bus.pt], cam_messages, CANBUS.cam),
+    }
