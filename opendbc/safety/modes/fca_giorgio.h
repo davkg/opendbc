@@ -6,17 +6,6 @@
 //#define FCA_GIORGIO_MAIN 0
 //#define FCA_GIORGIO_CAM  2
 
-// lateral limits
-const SteeringLimits FCA_GIORGIO_STEERING_LIMITS = {
-  .max_steer = 300,
-  .max_rt_delta = 150,
-  .max_rt_interval = 250000,
-  .max_rate_up = 4,
-  .max_rate_down = 4,
-  .driver_torque_allowance = 80,
-  .driver_torque_factor = 3,
-  .type = TorqueDriverLimited,
-};
 
 // CAN msgs we care about
 #define FCA_GIORGIO_ABS_1           0xEE
@@ -26,19 +15,6 @@ const SteeringLimits FCA_GIORGIO_STEERING_LIMITS = {
 #define FCA_GIORGIO_LKA_HUD_1       0x4AE
 #define FCA_GIORGIO_LKA_HUD_2       0x547
 #define FCA_GIORGIO_ACC_1           0x5A2
-
-// TODO: need to find a button message for cancel spam
-const CanMsg FCA_GIORGIO_TX_MSGS[] = {{FCA_GIORGIO_LKA_COMMAND, 0, 8}, {FCA_GIORGIO_LKA_HUD_1, 0, 8}, {FCA_GIORGIO_LKA_HUD_2, 0, 8}};
-
-// TODO: need to find a message for driver gas
-// TODO: re-check counter/checksum for ABS_3
-// TODO: reenable checksums/counters on ABS_1 and EPS_3 once checksums are bruteforced
-RxCheck fca_giorgio_rx_checks[] = {
-  {.msg = {{FCA_GIORGIO_ACC_1, 0, 8, .check_checksum = false, .max_counter = 0U, .frequency = 12U}, { 0 }, { 0 }}},
-  {.msg = {{FCA_GIORGIO_ABS_1, 0, 8, .check_checksum = false, .max_counter = 0U, .frequency = 100U}, { 0 }, { 0 }}},
-  {.msg = {{FCA_GIORGIO_ABS_3, 0, 8, .check_checksum = false, .max_counter = 0U, .frequency = 100U}, { 0 }, { 0 }}},
-  {.msg = {{FCA_GIORGIO_EPS_3, 0, 4, .check_checksum = false, .max_counter = 0U, .frequency = 100U}, { 0 }, { 0 }}},
-};
 
 uint8_t fca_giorgio_crc8_lut_j1850[256];  // Static lookup table for CRC8 SAE J1850
 
@@ -76,6 +52,18 @@ static uint32_t fca_giorgio_compute_crc(const CANPacket_t *to_push) {
 }
 
 static safety_config fca_giorgio_init(uint16_t param) {
+  // TODO: need to find a button message for cancel spam
+  const CanMsg FCA_GIORGIO_TX_MSGS[] = {{FCA_GIORGIO_LKA_COMMAND, 0, 8}, {FCA_GIORGIO_LKA_HUD_1, 0, 8}, {FCA_GIORGIO_LKA_HUD_2, 0, 8}};
+  // TODO: need to find a message for driver gas
+  // TODO: re-check counter/checksum for ABS_3
+  // TODO: reenable checksums/counters on ABS_1 and EPS_3 once checksums are bruteforced
+  RxCheck fca_giorgio_rx_checks[] = {
+    {.msg = {{FCA_GIORGIO_ACC_1, 0, 8, .check_checksum = false, .max_counter = 0U, .frequency = 12U}, { 0 }, { 0 }}},
+    {.msg = {{FCA_GIORGIO_ABS_1, 0, 8, .check_checksum = false, .max_counter = 0U, .frequency = 100U}, { 0 }, { 0 }}},
+    {.msg = {{FCA_GIORGIO_ABS_3, 0, 8, .check_checksum = false, .max_counter = 0U, .frequency = 100U}, { 0 }, { 0 }}},
+    {.msg = {{FCA_GIORGIO_EPS_3, 0, 4, .check_checksum = false, .max_counter = 0U, .frequency = 100U}, { 0 }, { 0 }}},
+  };
+  
   UNUSED(param);
 
   gen_crc_lookup_table_8(0x2F, fca_giorgio_crc8_lut_j1850);
@@ -133,6 +121,17 @@ static void fca_giorgio_rx_hook(const CANPacket_t *to_push) {
 }
 
 static bool fca_giorgio_tx_hook(const CANPacket_t *to_send) {
+  const SteeringLimits FCA_GIORGIO_STEERING_LIMITS = {
+    .max_steer = 300,
+    .max_rt_delta = 150,
+    .max_rt_interval = 250000,
+    .max_rate_up = 4,
+    .max_rate_down = 4,
+    .driver_torque_allowance = 80,
+    .driver_torque_factor = 3,
+    .type = TorqueDriverLimited,
+  };
+
   int addr = GET_ADDR(to_send);
   bool tx = true;
 
