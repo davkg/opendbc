@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 import unittest
-from panda import Panda
-from panda.tests.libpanda import libpanda_py
-import panda.tests.safety.common as common
-from panda.tests.safety.common import CANPackerPanda
 
+from opendbc.car.structs import CarParams
+from opendbc.safety.tests.libsafety import libsafety_py
+import opendbc.safety.tests.common as common
+from opendbc.safety.tests.common import CANPackerPanda
 
 class TestFcaGiorgio_Safety(common.PandaCarSafetyTest, common.MotorTorqueSteeringSafetyTest):
   TX_MSGS = [[0x1F6, 0], [0x4AE, 0], [0x547, 0]]
@@ -24,8 +24,8 @@ class TestFcaGiorgio_Safety(common.PandaCarSafetyTest, common.MotorTorqueSteerin
 
   def setUp(self):
     self.packer = CANPackerPanda("fca_giorgio")
-    self.safety = libpanda_py.libpanda
-    self.safety.set_safety_hooks(Panda.SAFETY_FCA_GIORGIO, 0)
+    self.safety = libsafety_py.libsafety
+    self.safety.set_safety_hooks(CarParams.SafetyModel.fcaGiorgio, 0)
     self.safety.init_tests()
 
   #def _button_msg(self, cancel=False, resume=False):
