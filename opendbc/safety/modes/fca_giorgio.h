@@ -11,6 +11,7 @@
 #define FCA_GIORGIO_ABS_1           0xEE
 #define FCA_GIORGIO_ABS_3           0xFA
 #define FCA_GIORGIO_EPS_3           0x122
+#define FCA_GIORGIO_ENGINE_1        0xFC
 #define FCA_GIORGIO_LKA_COMMAND     0x1F6
 #define FCA_GIORGIO_LKA_HUD_1       0x4AE
 #define FCA_GIORGIO_LKA_HUD_2       0x547
@@ -54,7 +55,6 @@ static uint32_t fca_giorgio_compute_crc(const CANPacket_t *to_push) {
 static safety_config fca_giorgio_init(uint16_t param) {
   // TODO: need to find a button message for cancel spam
   static const CanMsg FCA_GIORGIO_TX_MSGS[] = {{FCA_GIORGIO_LKA_COMMAND, 0, 8, .check_relay = true}, {FCA_GIORGIO_LKA_HUD_1, 0, 8, .check_relay = true}, {FCA_GIORGIO_LKA_HUD_2, 0, 8, .check_relay = true}};
-  // TODO: need to find a message for driver gas
   // TODO: re-check counter/checksum for ABS_3
   // TODO: reenable checksums/counters on ABS_1 and EPS_3 once checksums are bruteforced
   static RxCheck fca_giorgio_rx_checks[] = {
@@ -62,6 +62,7 @@ static safety_config fca_giorgio_init(uint16_t param) {
     {.msg = {{FCA_GIORGIO_ABS_1, 0, 8, .ignore_checksum = true, .ignore_counter = true, .max_counter = 0U, .frequency = 100U}, { 0 }, { 0 }}},
     {.msg = {{FCA_GIORGIO_ABS_3, 0, 8, .ignore_checksum = true, .ignore_counter = true, .max_counter = 0U, .frequency = 100U}, { 0 }, { 0 }}},
     {.msg = {{FCA_GIORGIO_EPS_3, 0, 4, .ignore_checksum = true, .ignore_counter = true, .max_counter = 0U, .frequency = 100U}, { 0 }, { 0 }}},
+    {.msg = {{FCA_GIORGIO_ENGINE_1, 0, 8, .ignore_checksum = true, .ignore_counter = true, .max_counter = 0U, .frequency = 100U}, { 0 }, { 0 }}},
   };
   
   UNUSED(param);
@@ -109,7 +110,10 @@ static void fca_giorgio_rx_hook(const CANPacket_t *to_push) {
 
     // TODO: find cruise button message
 
-    // TODO: find a driver gas message
+    // TODO: don't know if this is driver gas or engine throttle
+    if (addr == FCA_GIORGIO_ENGINE_1) {
+      gas_pressed = (GET_BYTE(to_push, 2) >> 4) | ((GET_BYTE(to_push, 3) & 0xFU) << 4);
+    }
 
     // Signal: ABS_3.BRAKE_PEDAL_SWITCH
     if (addr == FCA_GIORGIO_ABS_3) {
