@@ -58,10 +58,10 @@ static safety_config fca_giorgio_init(uint16_t param) {
   // TODO: re-check counter/checksum for ABS_3
   // TODO: reenable checksums/counters on ABS_1 and EPS_3 once checksums are bruteforced
   static RxCheck fca_giorgio_rx_checks[] = {
-    {.msg = {{FCA_GIORGIO_ACC_1, 0, 8, .ignore_checksum = true, .ignore_counter = true, .max_counter = 0U, .frequency = 12U}, { 0 }, { 0 }}},
-    {.msg = {{FCA_GIORGIO_ABS_1, 0, 8, .ignore_checksum = true, .ignore_counter = true, .max_counter = 0U, .frequency = 100U}, { 0 }, { 0 }}},
-    {.msg = {{FCA_GIORGIO_ABS_3, 0, 8, .ignore_checksum = true, .ignore_counter = true, .max_counter = 0U, .frequency = 100U}, { 0 }, { 0 }}},
-    {.msg = {{FCA_GIORGIO_EPS_3, 0, 4, .ignore_checksum = true, .ignore_counter = true, .max_counter = 0U, .frequency = 100U}, { 0 }, { 0 }}},
+    {.msg = {{FCA_GIORGIO_ACC_1, 0, 8, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true, .max_counter = 0U, .frequency = 12U}, { 0 }, { 0 }}},
+    {.msg = {{FCA_GIORGIO_ABS_1, 0, 8, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true, .max_counter = 0U, .frequency = 100U}, { 0 }, { 0 }}},
+    {.msg = {{FCA_GIORGIO_ABS_3, 0, 8, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true, .max_counter = 0U, .frequency = 100U}, { 0 }, { 0 }}},
+    {.msg = {{FCA_GIORGIO_EPS_3, 0, 4, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true, .max_counter = 0U, .frequency = 100U}, { 0 }, { 0 }}},
   };
   
   UNUSED(param);
