@@ -14,7 +14,7 @@ class CarInterface(CarInterfaceBase):
     ret.radarUnavailable = True
 
     ret.steerLimitTimer = 1.0
-    ret.steerActuatorDelay = 0.1
+    ret.steerActuatorDelay = 0.3
     CarInterfaceBase.configure_torque_tune(candidate, ret.lateralTuning)
 
     ret.pcmCruise = not ret.openpilotLongitudinalControl
