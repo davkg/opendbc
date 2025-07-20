@@ -6,7 +6,7 @@ from opendbc.safety.tests.libsafety import libsafety_py
 import opendbc.safety.tests.common as common
 from opendbc.safety.tests.common import CANPackerPanda
 
-class TestFcaGiorgio_Safety(common.PandaCarSafetyTest, common.MotorTorqueSteeringSafetyTest):
+class TestFcaGiorgio_Safety(common.PandaCarSafetyTest, common.DriverTorqueSteeringSafetyTest):
   TX_MSGS = [[0x1F6, 0], [0x4AE, 0], [0x547, 0]]
   STANDSTILL_THRESHOLD = 0
   RELAY_MALFUNCTION_ADDRS = {0: (0x1F6,)}
@@ -39,8 +39,9 @@ class TestFcaGiorgio_Safety(common.PandaCarSafetyTest, common.MotorTorqueSteerin
     values = {"WHEEL_SPEED_%s" % s: speed for s in ["FL", "FR", "RL", "RR"]}
     return self.packer.make_can_msg_panda("ABS_1", 0, values)
 
-  #def _user_gas_msg(self, gas):
-  #  pass
+  def _user_gas_msg(self, gas):
+   values = {"ACCEL_PEDAL": gas}
+   return self.packer.make_can_msg_panda("ENGINE_1", 0, values)
 
   def _user_brake_msg(self, brake):
     values = {"BRAKE_PEDAL_SWITCH": 1 if brake else 0}

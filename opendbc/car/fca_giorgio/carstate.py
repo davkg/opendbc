@@ -39,8 +39,8 @@ class CarState(CarStateBase):
     ret.steerFaultPermanent = bool(pt_cp.vl["EPS_2"]["LKA_FAULT"])
 
     # TODO: unsure if this is accel pedal or engine throttle
-    # ret.gas = pt_cp.vl["ENGINE_1"]["ACCEL_PEDAL"]
-    ret.gas = 0
+    # Appears to be accel pedal
+    ret.gas = pt_cp.vl["ENGINE_1"]["ACCEL_PEDAL"]
     ret.gasPressed = ret.gas > 0
     ret.brake = pt_cp.vl["ABS_4"]["BRAKE_PRESSURE"]
     ret.brakePressed = bool(pt_cp.vl["ABS_3"]["BRAKE_PEDAL_SWITCH"])
