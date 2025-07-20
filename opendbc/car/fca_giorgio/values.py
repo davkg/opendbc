@@ -37,7 +37,7 @@ class FcaGiorgioCarDocs(CarDocs):
 @dataclass(frozen=True, kw_only=True)
 class FcaGiorgioCarSpecs(CarSpecs):
   centerToFrontRatio: float = 0.45
-  steerRatio: float = 14.2
+  steerRatio: float = 13.4
 
 
 @dataclass
