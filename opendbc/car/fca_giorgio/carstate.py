@@ -34,7 +34,7 @@ class CarState(CarStateBase):
     ret.steeringRateDeg = pt_cp.vl["EPS_1"]["STEERING_RATE"]
     ret.steeringTorque = pt_cp.vl["EPS_2"]["DRIVER_TORQUE"]
     ret.steeringTorqueEps = pt_cp.vl["EPS_3"]["EPS_TORQUE"]
-    ret.steeringPressed = abs(ret.steeringTorque) > 80
+    ret.steeringPressed = abs(ret.steeringTorque) > 100
     ret.yawRate = pt_cp.vl["ABS_2"]["YAW_RATE"]
     ret.steerFaultPermanent = bool(pt_cp.vl["EPS_2"]["LKA_FAULT"])
 
