@@ -13,6 +13,11 @@ class CarState(CarStateBase):
     self.frame = 0
     self.CCP = CarControllerParams(CP)
 
+    # Button tracking
+    self.cancel_button = 0
+    self.highway_assist_button = 0
+    self.button_counter = 0
+
   def update(self, can_parsers) -> structs.CarState:
     pt_cp = can_parsers[Bus.pt]
 
@@ -58,7 +63,11 @@ class CarState(CarStateBase):
 
     ret.leftBlinker = bool(pt_cp.vl["BCM_1"]["LEFT_TURN_STALK"])
     ret.rightBlinker = bool(pt_cp.vl["BCM_1"]["RIGHT_TURN_STALK"])
-    # ret.buttonEvents = TODO
+
+    self.cancel_button = pt_cp.vl["ACC_BUTTON"]["CANCEL_OR_RADAR"]
+    self.highway_assist_button = pt_cp.vl["ACC_BUTTON"]["HIGHWAY_ASSIST"]
+    self.button_counter = pt_cp.vl["ACC_BUTTON"]["COUNTER"]
+
     # ret.espDisabled = TODO
 
     self.frame += 1
@@ -79,6 +88,7 @@ class CarState(CarStateBase):
       ("EPS_3", 100),
       ("ACC_1", 12),  # 12hz inactive / 50hz active
       ("BCM_1", 4),  # 4Hz plus triggered updates
+      ("ACC_BUTTON", 50),  # ACC button messages
     ]
 
     cm_messages = []

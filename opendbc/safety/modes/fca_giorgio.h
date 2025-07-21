@@ -15,6 +15,7 @@
 #define FCA_GIORGIO_LKA_HUD_1       0x4AE
 #define FCA_GIORGIO_LKA_HUD_2       0x547
 #define FCA_GIORGIO_ACC_1           0x5A2
+#define FCA_GIORGIO_ACC_BUTTON      0x2FA
 
 static uint8_t fca_giorgio_crc8_lut_j1850[256];  // Static lookup table for CRC8 SAE J1850
 
@@ -53,7 +54,12 @@ static uint32_t fca_giorgio_compute_crc(const CANPacket_t *to_push) {
 
 static safety_config fca_giorgio_init(uint16_t param) {
   // TODO: need to find a button message for cancel spam
-  static const CanMsg FCA_GIORGIO_TX_MSGS[] = {{FCA_GIORGIO_LKA_COMMAND, 0, 8, .check_relay = true}, {FCA_GIORGIO_LKA_HUD_1, 0, 8, .check_relay = true}, {FCA_GIORGIO_LKA_HUD_2, 0, 8, .check_relay = true}};
+  static const CanMsg FCA_GIORGIO_TX_MSGS[] = {
+    {FCA_GIORGIO_LKA_COMMAND, 0, 8, .check_relay = true},
+    {FCA_GIORGIO_LKA_HUD_1, 0, 8, .check_relay = true},
+    {FCA_GIORGIO_LKA_HUD_2, 0, 8, .check_relay = true},
+    {FCA_GIORGIO_ACC_BUTTON, 0, 3, .check_relay = false},
+  };
   // TODO: need to find a message for driver gas
   // TODO: re-check counter/checksum for ABS_3
   // TODO: reenable checksums/counters on ABS_1 and EPS_3 once checksums are bruteforced

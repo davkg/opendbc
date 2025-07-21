@@ -11,6 +11,7 @@ class CarControllerParams:
   STEER_STEP = 1
   HUD_1_STEP = 50
   HUD_2_STEP = 25
+  ACC_BUTTON_STEP = 2 # 50 Hz
 
   STEER_MAX = 300
   STEER_DRIVER_ALLOWANCE = 80
