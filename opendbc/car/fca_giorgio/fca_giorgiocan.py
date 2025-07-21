@@ -29,8 +29,8 @@ def create_acc_button_control(packer, bus, cancel_button=False):
     "SPEED_UP": 1,  # Default state is 1
     # "COUNTER": button_counter % 16,
   }
-  
+
   if cancel_button:
     values["CANCEL_OR_RADAR"] = 1
-  
+
   return packer.make_can_msg("ACC_BUTTON", bus, values)

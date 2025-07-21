@@ -1,5 +1,5 @@
 from opendbc.can.packer import CANPacker
-from opendbc.car import Bus, DT_CTRL, apply_driver_steer_torque_limits
+from opendbc.car import Bus, apply_driver_steer_torque_limits
 from opendbc.car.interfaces import CarControllerBase
 from opendbc.car.fca_giorgio import fca_giorgiocan
 from opendbc.car.fca_giorgio.values import CANBUS, CarControllerParams
@@ -26,7 +26,7 @@ class CarController(CarControllerBase):
     # Testing if buttons work
     # Send CANCEL button 2 seconds after HIGHWAY_ASSIST button is pressed
 
-    highway_assist_pressed = CS.highway_assist_button
+    highway_assist_pressed = CS.highway_assist_button > 0
 
     # Detect rising edge of highway assist button
     if highway_assist_pressed and not self.highway_assist_pressed_last:

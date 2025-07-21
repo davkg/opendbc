@@ -68,6 +68,7 @@ static safety_config fca_giorgio_init(uint16_t param) {
     {.msg = {{FCA_GIORGIO_ABS_1, 0, 8, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true, .max_counter = 0U, .frequency = 100U}, { 0 }, { 0 }}},
     {.msg = {{FCA_GIORGIO_ABS_3, 0, 8, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true, .max_counter = 0U, .frequency = 100U}, { 0 }, { 0 }}},
     {.msg = {{FCA_GIORGIO_EPS_3, 0, 4, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true, .max_counter = 0U, .frequency = 100U}, { 0 }, { 0 }}},
+    {.msg = {{FCA_GIORGIO_ACC_BUTTON, 0, 3, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true, .max_counter = 0U, .frequency = 50U}, { 0 }, { 0 }}},
   };
   
   UNUSED(param);
@@ -158,7 +159,7 @@ static bool fca_giorgio_tx_hook(const CANPacket_t *to_send) {
   return tx;
 }
 
-// Don't need this, using .check_relay instead
+// Don't need this anymore, using .check_relay instead
 // static bool fca_giorgio_fwd_hook(int bus_num, int addr) {
 //   bool block_msg = false;
 
