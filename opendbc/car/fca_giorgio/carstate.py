@@ -43,8 +43,8 @@ class CarState(CarStateBase):
     ret.yawRate = pt_cp.vl["ABS_2"]["YAW_RATE"]
     ret.steerFaultPermanent = bool(pt_cp.vl["EPS_2"]["LKA_FAULT"])
 
-    # TODO: unsure if this is accel pedal or engine throttle
-    # Appears to be throttle, it rises with both ACC and gas pedal
+    # ACCEL_PEDAL is throttle, it rises with both ACC and gas pedal
+    # We can infer gasPressed with throttle and cruiseState
     # ret.gas = pt_cp.vl["ENGINE_1"]["ACCEL_PEDAL"]
     ret.gas = 0
     ret.gasPressed = ret.gas > 0
@@ -86,9 +86,9 @@ class CarState(CarStateBase):
       ("EPS_1", 100),
       ("EPS_2", 100),
       ("EPS_3", 100),
+      ("ACC_BUTTON", 0),  # ACC button messages
       ("ACC_1", 12),  # 12hz inactive / 50hz active
       ("BCM_1", 4),  # 4Hz plus triggered updates
-      ("ACC_BUTTON", 50),  # ACC button messages
     ]
 
     cm_messages = []
