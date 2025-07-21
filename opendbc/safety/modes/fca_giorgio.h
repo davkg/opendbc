@@ -70,7 +70,7 @@ static safety_config fca_giorgio_init(uint16_t param) {
     {.msg = {{FCA_GIORGIO_EPS_3, 0, 4, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true, .max_counter = 0U, .frequency = 100U}, { 0 }, { 0 }}},
     {.msg = {{FCA_GIORGIO_ACC_BUTTON, 0, 3, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true, .max_counter = 0U, .frequency = 50U}, { 0 }, { 0 }}},
   };
-
+  
   UNUSED(param);
 
   gen_crc_lookup_table_8(0x2F, fca_giorgio_crc8_lut_j1850);
@@ -159,22 +159,23 @@ static bool fca_giorgio_tx_hook(const CANPacket_t *to_send) {
   return tx;
 }
 
-static bool fca_giorgio_fwd_hook(int bus_num, int addr) {
-  bool fwd = true;
+// Don't need this anymore, using .check_relay instead
+// static bool fca_giorgio_fwd_hook(int bus_num, int addr) {
+//   bool block_msg = false;
 
-  // forward ACC_BUTTON
-  if ((bus_num == 0) && (addr == FCA_GIORGIO_ACC_BUTTON)) {
-    fwd = true;
-  }
+//   // Block these messages from the camera
+//   if (bus_num == 2) {
+//     block_msg = (addr == FCA_GIORGIO_LKA_COMMAND) || (addr == FCA_GIORGIO_LKA_HUD_1) || (addr == FCA_GIORGIO_LKA_HUD_2);
+//   }
 
-  return fwd;
-}
+//   return block_msg;
+// }
 
 const safety_hooks fca_giorgio_hooks = {
   .init = fca_giorgio_init,
   .rx = fca_giorgio_rx_hook,
   .tx = fca_giorgio_tx_hook,
-  .fwd = fca_giorgio_fwd_hook,
+  // .fwd = fca_giorgio_fwd_hook,
   .get_counter = fca_giorgio_get_counter,
   .get_checksum = fca_giorgio_get_checksum,
   .compute_checksum = fca_giorgio_compute_crc,
