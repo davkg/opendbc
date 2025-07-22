@@ -51,6 +51,10 @@ class TestFcaGiorgio_Safety(common.PandaCarSafetyTest, common.DriverTorqueSteeri
     values = {"LKA_TORQUE": torque, "LKA_ACTIVE": steer_req}
     return self.packer.make_can_msg_panda("LKA_COMMAND", 0, values)
 
+  def _button_cmd_msg(self, cancel, steer_req=1):
+    values = {"SPEED_UP": 1, "CANCEL_OR_RADAR": cancel}
+    return self.packer.make_can_msg_panda("ACC_BUTTON", 0, values)
+
   def test_rx_hook(self):
     for count in range(20):
       self.assertTrue(self._rx(self._speed_msg(0)), f"{count=}")
@@ -58,6 +62,7 @@ class TestFcaGiorgio_Safety(common.PandaCarSafetyTest, common.DriverTorqueSteeri
       self.assertTrue(self._rx(self._torque_meas_msg(0)), f"{count=}")
       #self.assertTrue(self._rx(self._user_gas_msg(0)), f"{count=}")
       self.assertTrue(self._rx(self._pcm_status_msg(False)), f"{count=}")
+      self.assertTrue(self._rx(self._button_cmd_msg(1)), f"{count=}")
 
 
 if __name__ == "__main__":
