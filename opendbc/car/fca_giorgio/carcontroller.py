@@ -26,6 +26,9 @@ class CarController(CarControllerBase):
     # Testing if buttons work
     # Send CANCEL button 2 seconds after HIGHWAY_ASSIST button is pressed
 
+    if self.frame == 1000:  # Send a cancel button press 10 seconds after startup
+      can_sends.append(fca_giorgiocan.create_acc_button_control(self.packer_pt, CANBUS.pt, cancel_button=True))
+
     highway_assist_pressed = CS.highway_assist_button > 0
 
     # Detect rising edge of highway assist button
