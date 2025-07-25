@@ -1,4 +1,5 @@
 import numpy as np
+from opendbc.can.can_define import CANDefine
 from opendbc.can.parser import CANParser
 from opendbc.car import Bus, create_button_events, structs
 from opendbc.car.common.conversions import Conversions as CV
@@ -14,6 +15,9 @@ class CarState(CarStateBase):
     super().__init__(CP)
     self.frame = 0
     self.CCP = CarControllerParams(CP)
+
+    can_define = CANDefine(DBC[CP.carFingerprint][Bus.pt])
+    self.shifter_values = can_define.dv["GEAR"]["GEAR"]
 
     # Button tracking
     self.highway_assist_button = 0
@@ -53,6 +57,9 @@ class CarState(CarStateBase):
     ret.brake = pt_cp.vl["ABS_4"]["BRAKE_PRESSURE"]
     ret.brakePressed = bool(pt_cp.vl["ABS_3"]["BRAKE_PEDAL_SWITCH"])
     #ret.parkingBrake = TODO
+
+    gear = self.shifter_values.get(pt_cp.vl["GEAR"]["GEAR"])
+    ret.gearShifter = self.parse_gear_shifter(gear)
 
     if bool(pt_cp.vl["ENGINE_1"]["REVERSE"]):
       ret.gearShifter = GearShifter.reverse
@@ -94,6 +101,7 @@ class CarState(CarStateBase):
       ("ACC_BUTTON", 0),  # ACC button messages
       ("ACC_1", 12),  # 12hz inactive / 50hz active
       ("BCM_1", 4),  # 4Hz plus triggered updates
+      ("GEAR", 0),  # 1Hz plus triggered updates
     ]
 
     cm_messages = []
