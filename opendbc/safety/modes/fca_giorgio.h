@@ -76,25 +76,25 @@ static safety_config fca_giorgio_init(uint16_t param) {
   return BUILD_SAFETY_CFG(fca_giorgio_rx_checks, FCA_GIORGIO_TX_MSGS);
 }
 
-static void fca_giorgio_rx_hook(const CANPacket_t *to_push) {
-  if (GET_BUS(to_push) == 0U) {
-    int addr = GET_ADDR(to_push);
+static void fca_giorgio_rx_hook(const CANPacket_t *msg) {
+  if (GET_BUS(msg) == 0U) {
+    int addr = GET_ADDR(msg);
 
     // Update in-motion state by sampling wheel speeds
     if (addr == FCA_GIORGIO_ABS_1) {
       // Thanks, FCA, for these 13 bit signals. Makes perfect sense. Great work.
       // Signals: ABS_3.WHEEL_SPEED_[FL,FR,RL,RR]
-      int wheel_speed_fl = (GET_BYTE(to_push, 1) >> 3) | (GET_BYTE(to_push, 0) << 5);
-      int wheel_speed_fr = (GET_BYTE(to_push, 3) >> 6) | (GET_BYTE(to_push, 2) << 2) | ((GET_BYTE(to_push, 1) & 0x7U) << 10);
-      int wheel_speed_rl = (GET_BYTE(to_push, 4) >> 1) | ((GET_BYTE(to_push, 3) & 0x3FU) << 7);
-      int wheel_speed_rr = (GET_BYTE(to_push, 6) >> 4) | (GET_BYTE(to_push, 5) << 4) | ((GET_BYTE(to_push, 4) & 0x1U) << 12);
+      int wheel_speed_fl = (GET_BYTE(msg, 1) >> 3) | (GET_BYTE(msg, 0) << 5);
+      int wheel_speed_fr = (GET_BYTE(msg, 3) >> 6) | (GET_BYTE(msg, 2) << 2) | ((GET_BYTE(msg, 1) & 0x7U) << 10);
+      int wheel_speed_rl = (GET_BYTE(msg, 4) >> 1) | ((GET_BYTE(msg, 3) & 0x3FU) << 7);
+      int wheel_speed_rr = (GET_BYTE(msg, 6) >> 4) | (GET_BYTE(msg, 5) << 4) | ((GET_BYTE(msg, 4) & 0x1U) << 12);
       vehicle_moving = (wheel_speed_fl + wheel_speed_fr + wheel_speed_rl + wheel_speed_rr) > 0;
     }
 
     // Update driver input torque samples
     // Signal: EPS_3.EPS_TORQUE
     if (addr == FCA_GIORGIO_EPS_3) {
-      int torque_driver_new = ((GET_BYTE(to_push, 1) >> 4) | (GET_BYTE(to_push, 0) << 4)) - 2048U;
+      int torque_driver_new = ((GET_BYTE(msg, 1) >> 4) | (GET_BYTE(msg, 0) << 4)) - 2048U;
       update_sample(&torque_driver, torque_driver_new);
     }
 
@@ -102,7 +102,7 @@ static void fca_giorgio_rx_hook(const CANPacket_t *to_push) {
       // When using stock ACC, enter controls on rising edge of stock ACC engage, exit on disengage
       // Always exit controls on main switch off
       // Signal: ACC_1.CRUISE_STATUS
-      int acc_status = (GET_BYTE(to_push, 2) & 0x60U) >> 5;
+      int acc_status = (GET_BYTE(msg, 2) & 0x60U) >> 5;
       bool cruise_engaged = (acc_status == 2) || (acc_status == 3);
       acc_main_on = cruise_engaged || (acc_status == 1);
 
@@ -119,12 +119,12 @@ static void fca_giorgio_rx_hook(const CANPacket_t *to_push) {
 
     // Signal: ABS_3.BRAKE_PEDAL_SWITCH
     if (addr == FCA_GIORGIO_ABS_3) {
-      brake_pressed = GET_BIT(to_push, 3U);
+      brake_pressed = GET_BIT(msg, 3U);
     }
   }
 }
 
-static bool fca_giorgio_tx_hook(const CANPacket_t *to_send) {
+static bool fca_giorgio_tx_hook(const CANPacket_t *msg) {
   const TorqueSteeringLimits FCA_GIORGIO_STEERING_LIMITS = {
     .max_torque = 300,
     .max_rt_delta = 150,
@@ -135,15 +135,15 @@ static bool fca_giorgio_tx_hook(const CANPacket_t *to_send) {
     .type = TorqueDriverLimited,
   };
 
-  int addr = GET_ADDR(to_send);
+  int addr = GET_ADDR(msg);
   bool tx = true;
 
   // Safety check for HCA_01 Heading Control Assist torque
   // Signal: LKA_COMMAND.
   // Signal: HCA_01.HCA_01_LM_OffSign (direction)
   if (addr == FCA_GIORGIO_LKA_COMMAND) {
-    int desired_torque = ((GET_BYTE(to_send, 1) >> 5) | (GET_BYTE(to_send, 0) << 8)) - 1024U;
-    bool steer_req = GET_BIT(to_send, 11U);
+    int desired_torque = ((GET_BYTE(msg, 1) >> 5) | (GET_BYTE(msg, 0) << 8)) - 1024U;
+    bool steer_req = GET_BIT(msg, 11U);
 
     if (steer_torque_cmd_checks(desired_torque, steer_req, FCA_GIORGIO_STEERING_LIMITS)) {
       tx = false;

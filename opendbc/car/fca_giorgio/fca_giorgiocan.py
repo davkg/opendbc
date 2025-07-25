@@ -1,3 +1,5 @@
+from opendbc.car.crc import CRC8J1850
+
 def create_steering_control(packer, bus, apply_steer, lkas_enabled):
   values = {
     "LKA_ACTIVE": lkas_enabled,
@@ -34,3 +36,18 @@ def create_acc_button_control(packer, bus, cancel_button=False):
     values["CANCEL_OR_RADAR"] = 1
 
   return packer.make_can_msg("ACC_BUTTON", bus, values)
+
+
+def fca_giorgio_checksum(address: int, sig, d: bytearray) -> int:
+  crc = 0
+  for i in range(len(d) - 1):
+    crc ^= d[i]
+    crc = CRC8J1850[crc]
+  if address == 0xDE:
+    return crc ^ 0x10
+  elif address == 0x106:
+    return crc ^ 0xF6
+  elif address == 0x122:
+    return crc ^ 0xF1
+  else:
+    return crc ^ 0x0A
