@@ -61,11 +61,6 @@ class CarState(CarStateBase):
     gear = self.shifter_values.get(pt_cp.vl["GEAR"]["GEAR"])
     ret.gearShifter = self.parse_gear_shifter(gear)
 
-    if bool(pt_cp.vl["ENGINE_1"]["REVERSE"]):
-      ret.gearShifter = GearShifter.reverse
-    else:
-      ret.gearShifter = GearShifter.drive
-
     ret.cruiseState.available = pt_cp.vl["ACC_1"]["CRUISE_STATUS"] in (1, 2, 3)
     ret.cruiseState.enabled = pt_cp.vl["ACC_1"]["CRUISE_STATUS"] in (2, 3)
     ret.cruiseState.speed = pt_cp.vl["ACC_1"]["HUD_SPEED"] * CV.KPH_TO_MS
