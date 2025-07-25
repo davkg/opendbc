@@ -1,6 +1,4 @@
-import numpy as np
-from opendbc.can.can_define import CANDefine
-from opendbc.can.parser import CANParser
+from opendbc.can.parser import CANDefine, CANParser
 from opendbc.car import Bus, create_button_events, structs
 from opendbc.car.common.conversions import Conversions as CV
 from opendbc.car.interfaces import CarStateBase
@@ -24,21 +22,19 @@ class CarState(CarStateBase):
     self.acc_distance_button = 0
     self.button_counter = 0
 
+
   def update(self, can_parsers) -> structs.CarState:
     pt_cp = can_parsers[Bus.pt]
 
     ret = structs.CarState()
 
-    ret.wheelSpeeds = self.get_wheel_speeds(
+    self.parse_wheel_speeds(ret,
       pt_cp.vl["ABS_1"]["WHEEL_SPEED_FL"],
       pt_cp.vl["ABS_1"]["WHEEL_SPEED_FR"],
       pt_cp.vl["ABS_1"]["WHEEL_SPEED_RL"],
       pt_cp.vl["ABS_1"]["WHEEL_SPEED_RR"],
-      unit=1.0
+      unit=1.0,
     )
-
-    ret.vEgoRaw = float(np.mean([ret.wheelSpeeds.fl, ret.wheelSpeeds.fr, ret.wheelSpeeds.rl, ret.wheelSpeeds.rr]))
-    ret.vEgo, ret.aEgo = self.update_speed_kf(ret.vEgoRaw)
     ret.standstill = ret.vEgoRaw == 0
 
     ret.steeringAngleDeg = pt_cp.vl["EPS_1"]["STEERING_ANGLE"]
@@ -49,21 +45,20 @@ class CarState(CarStateBase):
     ret.yawRate = pt_cp.vl["ABS_2"]["YAW_RATE"]
     ret.steerFaultPermanent = bool(pt_cp.vl["EPS_2"]["LKA_FAULT"])
 
-    # ACCEL_PEDAL is throttle, it rises with both ACC and gas pedal
-    # We can infer gasPressed with throttle and cruiseState
-    # ret.gas = pt_cp.vl["ENGINE_1"]["ACCEL_PEDAL"]
-    ret.gas = 0
-    ret.gasPressed = ret.gas > 0
-    ret.brake = pt_cp.vl["ABS_4"]["BRAKE_PRESSURE"]
-    ret.brakePressed = bool(pt_cp.vl["ABS_3"]["BRAKE_PEDAL_SWITCH"])
-    #ret.parkingBrake = TODO
-
     gear = self.shifter_values.get(pt_cp.vl["GEAR"]["GEAR"])
     ret.gearShifter = self.parse_gear_shifter(gear)
 
     ret.cruiseState.available = pt_cp.vl["ACC_1"]["CRUISE_STATUS"] in (1, 2, 3)
     ret.cruiseState.enabled = pt_cp.vl["ACC_1"]["CRUISE_STATUS"] in (2, 3)
     ret.cruiseState.speed = pt_cp.vl["ACC_1"]["HUD_SPEED"] * CV.KPH_TO_MS
+
+    # TODO: rename ACCEL_PEDAL to throttle as both gas pedal and ACC affect it
+    # We can infer gasPressed with throttle and cruiseState, but unsure if reliable
+    # ret.gasPressed = pt_cp.vl["ENGINE_1"]["ACCEL_PEDAL"] > 0 and ret.cruiseState.available
+    ret.gasPressed = False
+    ret.brake = pt_cp.vl["ABS_4"]["BRAKE_PRESSURE"]
+    ret.brakePressed = bool(pt_cp.vl["ABS_3"]["BRAKE_PEDAL_SWITCH"])
+    #ret.parkingBrake = TODO
 
     ret.leftBlinker = bool(pt_cp.vl["BCM_1"]["LEFT_TURN_STALK"])
     ret.rightBlinker = bool(pt_cp.vl["BCM_1"]["RIGHT_TURN_STALK"])
@@ -83,25 +78,7 @@ class CarState(CarStateBase):
 
   @staticmethod
   def get_can_parsers(CP):
-    pt_messages = [
-      # sig_address, frequency
-      ("ABS_1", 100),
-      ("ABS_2", 100),
-      ("ABS_3", 100),
-      ("ABS_4", 100),
-      ("ENGINE_1", 100),
-      ("EPS_1", 100),
-      ("EPS_2", 100),
-      ("EPS_3", 100),
-      ("ACC_BUTTON", 0),  # ACC button messages
-      ("ACC_1", 12),  # 12hz inactive / 50hz active
-      ("BCM_1", 4),  # 4Hz plus triggered updates
-      ("GEAR", 0),  # 1Hz plus triggered updates
-    ]
-
-    cm_messages = []
-
     return {
-      Bus.pt: CANParser(DBC[CP.carFingerprint][Bus.pt], pt_messages, CANBUS.pt),
-      Bus.cam: CANParser(DBC[CP.carFingerprint][Bus.pt], cm_messages, CANBUS.cam),
+      Bus.pt: CANParser(DBC[CP.carFingerprint][Bus.pt], [], CANBUS.pt),
+      Bus.cam: CANParser(DBC[CP.carFingerprint][Bus.pt], [], CANBUS.cam),
     }
