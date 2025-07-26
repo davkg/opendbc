@@ -18,9 +18,9 @@ class CarState(CarStateBase):
     self.shifter_values = can_define.dv["GEAR"]["GEAR"]
 
     # Button tracking
-    # self.highway_assist_button = 0
-    # self.acc_distance_button = 0
-    # self.button_counter = 0
+    self.highway_assist_button = 0
+    self.acc_distance_button = 0
+    self.button_counter = 0
 
 
   def update(self, can_parsers) -> structs.CarState:
@@ -63,12 +63,12 @@ class CarState(CarStateBase):
     ret.leftBlinker = bool(pt_cp.vl["BCM_1"]["LEFT_TURN_STALK"])
     ret.rightBlinker = bool(pt_cp.vl["BCM_1"]["RIGHT_TURN_STALK"])
 
-    # prev_acc_distance_button = self.acc_distance_button
-    # self.acc_distance_button = pt_cp.vl["ACC_BUTTON"]["ACC_DISTANCE"]
-    # self.highway_assist_button = pt_cp.vl["ACC_BUTTON"]["HIGHWAY_ASSIST"]
-    # self.button_counter = pt_cp.vl["ACC_BUTTON"]["COUNTER"]
+    prev_acc_distance_button = self.acc_distance_button
+    self.acc_distance_button = pt_cp.vl["ACC_BUTTON"]["ACC_DISTANCE"]
+    self.highway_assist_button = pt_cp.vl["ACC_BUTTON"]["HIGHWAY_ASSIST"]
+    self.button_counter = pt_cp.vl["ACC_BUTTON"]["COUNTER"]
 
-    # ret.buttonEvents = create_button_events(self.acc_distance_button, prev_acc_distance_button, {1: ButtonType.gapAdjustCruise})
+    ret.buttonEvents = create_button_events(self.acc_distance_button, prev_acc_distance_button, {1: ButtonType.gapAdjustCruise})
 
     # ret.espDisabled = TODO
 

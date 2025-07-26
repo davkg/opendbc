@@ -9,8 +9,7 @@ from opendbc import DBC_PATH
 from opendbc.car.honda.hondacan import honda_checksum
 from opendbc.car.toyota.toyotacan import toyota_checksum
 from opendbc.car.subaru.subarucan import subaru_checksum
-from opendbc.car.chrysler.chryslercan import chrysler_checksum
-from opendbc.car.fca_giorgio.fca_giorgiocan import fca_giorgio_checksum
+from opendbc.car.chrysler.chryslercan import chrysler_checksum, fca_giorgio_checksum
 from opendbc.car.hyundai.hyundaicanfd import hkg_can_fd_checksum
 from opendbc.car.volkswagen.mqbcan import volkswagen_mqb_meb_checksum, xor_checksum
 from opendbc.car.tesla.teslacan import tesla_checksum
