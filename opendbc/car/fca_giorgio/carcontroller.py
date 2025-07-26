@@ -15,6 +15,7 @@ class CarController(CarControllerBase):
 
     # Button tracking
     self.highway_assist_pressed_last = False
+    self.acc_distance_pressed_last = False
     self.cancel_button_send_frame = 0
 
 
@@ -26,20 +27,25 @@ class CarController(CarControllerBase):
     # Testing if buttons work
     # Send CANCEL button 2 seconds after HIGHWAY_ASSIST button is pressed
 
-    if self.frame == 1000:  # Send a cancel button press 10 seconds after startup
-      can_sends.append(fca_giorgiocan.create_acc_button_control(self.packer_pt, CANBUS.pt, cancel_button=True))
-
     highway_assist_pressed = CS.highway_assist_button > 0
 
     # Detect rising edge of highway assist button
     if highway_assist_pressed and not self.highway_assist_pressed_last:
-      target_frame = self.frame + 200  # 2 seconds at 100Hz, should be on ACC_BUTTON_STEP
+      target_frame = self.frame + 400  # 4 seconds at 100Hz, should be on both 50Hz and same counter (multiple of 16)
       self.cancel_button_send_frame = target_frame
 
     if self.frame == self.cancel_button_send_frame and self.cancel_button_send_frame > 0:
-      can_sends.append(fca_giorgiocan.create_acc_button_control(self.packer_pt, CANBUS.pt, cancel_button=True))
+      can_sends.append(fca_giorgiocan.create_acc_button_control(self.packer_pt, CANBUS.pt, CS.button_counter, cancel_button=True))
 
     self.highway_assist_pressed_last = highway_assist_pressed
+
+    # Test with acc_distance button
+    acc_distance_pressed = CS.acc_distance_button > 0
+    # Rising edge of button
+    if acc_distance_pressed and not self.acc_distance_pressed_last:
+      can_sends.append(fca_giorgiocan.create_acc_button_control(self.packer_pt, CANBUS.pt, CS.button_counter, cancel_button=True))
+
+    self.highway_assist_pressed_last = acc_distance_pressed
 
     # **** Steering Controls ************************************************ #
 

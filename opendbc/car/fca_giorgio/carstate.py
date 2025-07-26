@@ -58,10 +58,12 @@ class CarState(CarStateBase):
     ret.gasPressed = False
     ret.brake = pt_cp.vl["ABS_4"]["BRAKE_PRESSURE"]
     ret.brakePressed = bool(pt_cp.vl["ABS_3"]["BRAKE_PEDAL_SWITCH"])
-    ret.parkingBrake = bool(pt_cp.lv["GEAR"]["PARKING_BRAKE"])
+    ret.parkingBrake = bool(pt_cp.vl["GEAR"]["PARKING_BRAKE"])
 
     ret.leftBlinker = bool(pt_cp.vl["BCM_1"]["LEFT_TURN_STALK"])
     ret.rightBlinker = bool(pt_cp.vl["BCM_1"]["RIGHT_TURN_STALK"])
+
+    ret.doorOpen = bool(pt_cp.vl["DOOR_RELATED"]["DOOR_OPEN"])
 
     prev_acc_distance_button = self.acc_distance_button
     self.acc_distance_button = pt_cp.vl["ACC_BUTTON"]["ACC_DISTANCE"]
