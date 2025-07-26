@@ -235,8 +235,7 @@ BO_ 1449 GEAR: 8 XXX
  SG_ NEW_SIGNAL_3 : 0|1@0+ (1,0) [0|1] "" XXX
  SG_ NEW_SIGNAL_2 : 1|1@0+ (1,0) [0|1] "" XXX
  SG_ NEW_SIGNAL_1 : 2|1@0+ (1,0) [0|1] "" XXX
- SG_ MAYBE_PARKING_BREAK : 21|1@0+ (1,0) [0|1] "" XXX
- SG_ GEAR : 23|2@0+ (1,0) [0|3] "" XXX
+ SG_ GEAR : 23|3@0+ (1,0) [0|3] "" XXX
 
 BO_ 1458 CAM_UNKNOWN_5: 4 CAMERA
  SG_ NEW_SIGNAL_1 : 5|1@0+ (1,0) [0|1] "" XXX
@@ -267,4 +266,4 @@ CM_ SG_ 762 SPEED_UP_DOWN "Rises for both up and down";
 CM_ SG_ 762 SPEED_UP "Lowers for only up";
 CM_ BO_ 1198 "Definite LKA activity, probably contains lane-line recognition and lane departure signals, indicator of LKA vs TJA, perhaps indicator of active assist in map-permitted areas";
 VAL_ 262 LKA_STATUS 0 "standby" 1 "lka_active";
-VAL_ 1449 GEAR 0 "PARK" 1 "REVERSE" 2 "DRIVE";
+VAL_ 1449 GEAR 1 "PARK" 2 "REVERSE" 3 "NEUTRAL" 4 "DRIVE" 6 "MANUAL";
