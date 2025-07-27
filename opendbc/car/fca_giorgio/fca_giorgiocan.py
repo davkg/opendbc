@@ -49,5 +49,7 @@ def fca_giorgio_checksum(address: int, sig, d: bytearray) -> int:
     return crc ^ 0xF6
   elif address == 0x122:
     return crc ^ 0xF1
+  elif address == 0x2FA:
+    return crc ^ 0xBE
   else:
     return crc ^ 0x0A
