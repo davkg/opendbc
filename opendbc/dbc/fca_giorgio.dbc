@@ -218,8 +218,8 @@ BO_ 1198 LKA_HUD_1: 8 CAMERA
  SG_ COUNTER : 51|4@0+ (1,0) [0|15] "" XXX
  SG_ CHECKSUM : 63|8@0+ (1,0) [0|255] "" XXX
 
-BO_ 1201 DOOR_RELATED: 8 XXX
- SG_ DOOR_OPEN : 0|1@0+ (1,0) [0|1] "" XXX
+BO_ 1201 DOOR: 8 XXX
+ SG_ DOOR_OPEN_FL : 0|1@0+ (1,0) [0|1] "" XXX
 
 BO_ 1351 LKA_HUD_2: 8 CAMERA
  SG_ NEW_SIGNAL_1 : 51|3@0+ (1,0) [0|7] "" XXX
@@ -228,8 +228,8 @@ BO_ 1351 LKA_HUD_2: 8 CAMERA
 BO_ 1442 ACC_1: 8 RADAR
  SG_ HUD_SPEED : 7|8@0+ (1,0) [0|255] "km/h" XXX
  SG_ TARGET_SPEED : 15|8@0+ (0.433,0) [0|255] "m/s" XXX
- SG_ NEW_SIGNAL_3 : 17|5@0+ (1,0) [0|31] "" XXX
- SG_ NEW_SIGNAL_4 : 18|1@0+ (1,0) [0|1] "" XXX
+ SG_ DRIVE_GEAR : 17|4@0+ (1,0) [0|15] "" XXX
+ SG_ NEW_SIGNAL_1 : 18|1@0+ (1,0) [0|1] "" XXX
  SG_ CRUISE_STATUS : 22|2@0+ (1,0) [0|3] "" XXX
  SG_ MAYBE_TJA : 23|1@0+ (1,0) [0|1] "" XXX
 
@@ -269,4 +269,5 @@ CM_ SG_ 762 SPEED_UP_DOWN "Rises for both up and down";
 CM_ SG_ 762 SPEED_UP "Lowers for only up";
 CM_ BO_ 1198 "Definite LKA activity, probably contains lane-line recognition and lane departure signals, indicator of LKA vs TJA, perhaps indicator of active assist in map-permitted areas";
 VAL_ 262 LKA_STATUS 0 "standby" 1 "lka_active";
+VAL_ 1442 DRIVE_GEAR 13 "PARK" 14 "REVERSE";
 VAL_ 1449 GEAR 1 "PARK" 2 "REVERSE" 3 "NEUTRAL" 4 "DRIVE" 6 "MANUAL";
