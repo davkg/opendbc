@@ -40,7 +40,7 @@ class CarController(CarControllerBase):
       (self.frame - self.cancel_button_send_frame) % 2 == 0 and
       self.frame < self.cancel_button_end_frame
     ):
-      can_sends.append(fca_giorgiocan.create_acc_button_control(self.packer_pt, CANBUS.pt, CS.button_counter, cancel_button=True))
+      can_sends.extend([fca_giorgiocan.create_acc_button_control(self.packer_pt, CANBUS.pt, CS.button_counter, acc_distance=True)] * 10)
 
     self.highway_assist_pressed_last = highway_assist_pressed
 
