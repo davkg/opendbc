@@ -63,7 +63,10 @@ class CarState(CarStateBase):
     ret.leftBlinker = bool(pt_cp.vl["BCM_1"]["LEFT_TURN_STALK"])
     ret.rightBlinker = bool(pt_cp.vl["BCM_1"]["RIGHT_TURN_STALK"])
 
-    ret.doorOpen = bool(pt_cp.vl["DOOR"]["DOOR_OPEN_FL"])
+    ret.leftBlindspot = bool(pt_cp.vl["BLIND_SPOT"]["BLIND_SPOT_LEFT"])
+    ret.rightBlindspot = bool(pt_cp.vl["BLIND_SPOT"]["BLIND_SPOT_RIGHT"])
+
+    ret.doorOpen = bool(pt_cp.vl["BCM_2"]["DOOR_OPEN_FL"])
 
     prev_acc_distance_button = self.acc_distance_button
     self.acc_distance_button = pt_cp.vl["ACC_BUTTON"]["ACC_DISTANCE"]
