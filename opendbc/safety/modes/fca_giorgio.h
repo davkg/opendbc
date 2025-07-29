@@ -59,6 +59,7 @@ static safety_config fca_giorgio_init(uint16_t param) {
     {FCA_GIORGIO_LKA_HUD_1, 0, 8, .check_relay = true},
     {FCA_GIORGIO_LKA_HUD_2, 0, 8, .check_relay = true},
     {FCA_GIORGIO_ACC_BUTTON, 0, 3, .check_relay = false},
+    {FCA_GIORGIO_ACC_BUTTON, 2, 3, .check_relay = false},
   };
   // TODO: need to find a message for driver gas
   // TODO: re-check counter/checksum for ABS_3
