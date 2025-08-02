@@ -52,10 +52,9 @@ class CarState(CarStateBase):
     ret.cruiseState.enabled = pt_cp.vl["ACC_1"]["CRUISE_STATUS"] in (2, 3)
     ret.cruiseState.speed = pt_cp.vl["ACC_1"]["HUD_SPEED"] * CV.KPH_TO_MS
 
-    # TODO: rename ACCEL_PEDAL to throttle as both gas pedal and ACC affect it
-    # We can infer gasPressed with throttle and cruiseState, but unsure if reliable or necessary
-    # ret.gasPressed = pt_cp.vl["ENGINE_1"]["ACCEL_PEDAL"] > 0 and not ret.cruiseState.enabled
-    ret.gasPressed = False
+    # TODO: rename ACCEL_PEDAL as both gas pedal and ACC affect it
+    # Can infer gasPressed with engine throttle and cruiseState, but unsure if this covers all states
+    ret.gasPressed = pt_cp.vl["ENGINE_1"]["ACCEL_PEDAL"] > 0 and not ret.cruiseState.enabled
     ret.brake = pt_cp.vl["ABS_4"]["BRAKE_PRESSURE"]
     ret.brakePressed = bool(pt_cp.vl["ABS_3"]["BRAKE_PEDAL_SWITCH"])
     ret.parkingBrake = bool(pt_cp.vl["GEAR"]["PARKING_BRAKE"])
