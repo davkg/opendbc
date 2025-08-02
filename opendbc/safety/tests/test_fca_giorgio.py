@@ -52,7 +52,7 @@ class TestFcaGiorgio_Safety(common.PandaCarSafetyTest, common.DriverTorqueSteeri
     return self.packer.make_can_msg_panda("LKA_COMMAND", 0, values)
 
   def _button_cmd_msg(self, cancel, steer_req=1):
-    values = {"SPEED_UP": 1, "CANCEL_OR_RADAR": cancel}
+    values = {"SET_SPEED": 2, "CANCEL_OR_RADAR": cancel}
     return self.packer.make_can_msg_panda("ACC_BUTTON", 0, values)
 
   def test_rx_hook(self):

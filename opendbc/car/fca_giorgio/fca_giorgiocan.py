@@ -28,7 +28,7 @@ def create_lka_hud_2_control(packer, bus, lat_active):
 
 def create_acc_button_control(packer, bus, counter, cancel_button=False, acc_distance=False):
   values = {
-    "SPEED_UP": 1,  # Default state is 1
+    "SET_SPEED": 2,  # Inactive state is 2
     "COUNTER": (counter + 1) % 16,
   }
 
