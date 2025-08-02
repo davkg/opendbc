@@ -14,10 +14,10 @@ class CarController(CarControllerBase):
     self.frame = 0
 
     # Button tracking
-    self.highway_assist_pressed_last = False
-    self.acc_distance_pressed_last = False
-    self.cancel_button_send_frame = -1
-    self.cancel_button_end_frame = -1
+    # self.highway_assist_pressed_last = False
+    # self.acc_distance_pressed_last = False
+    # self.cancel_button_send_frame = -1
+    # self.cancel_button_end_frame = -1
 
 
   def update(self, CC, CS, now_nanos):
@@ -25,25 +25,26 @@ class CarController(CarControllerBase):
     can_sends = []
 
     # **** Button Test ****************************************************** #
-    # Testing if buttons work
-    # Send CANCEL button 1 seconds after HIGHWAY_ASSIST button is pressed
+    # Send cancel button 1 second after highway assist button is detected
+    # This does not work, car doesn't respond to the cancel signal
+    # TODO: Figure out why this doesn't work
 
-    highway_assist_pressed = CS.highway_assist_button > 0
+    # highway_assist_pressed = CS.highway_assist_button > 0
 
-    # Detect rising edge of highway assist button
-    if highway_assist_pressed and not self.highway_assist_pressed_last:
-      self.cancel_button_send_frame = self.frame + 101 # 101 to land on 50Hz
-      self.cancel_button_end_frame = self.frame + 501 # Hold button for 5 seconds
+    # # Detect rising edge of highway assist button
+    # if highway_assist_pressed and not self.highway_assist_pressed_last:
+    #   self.cancel_button_send_frame = self.frame + 101 # 101 to land on 50Hz after 1 second
+    #   self.cancel_button_end_frame = self.frame + 501 # Hold cancel for 5 seconds
 
-    if (
-      self.frame >= self.cancel_button_send_frame and
-      # (self.frame - self.cancel_button_send_frame) % 2 == 0 and
-      self.frame < self.cancel_button_end_frame
-    ):
-      can_sends.append(fca_giorgiocan.create_acc_button_control(self.packer_pt, CANBUS.pt, CS.button_counter, cancel_button=True))
-      can_sends.append(fca_giorgiocan.create_acc_button_control(self.packer_pt, 2, CS.button_counter, cancel_button=True))
+    # if (
+    #   self.frame >= self.cancel_button_send_frame and
+    #   (self.frame - self.cancel_button_send_frame) % 2 == 0 and # 50Hz
+    #   self.frame < self.cancel_button_end_frame
+    # ):
+    #   can_sends.append(fca_giorgiocan.create_acc_button_control(self.packer_pt, CANBUS.pt, CS.button_counter, cancel_button=True))
+    #   can_sends.append(fca_giorgiocan.create_acc_button_control(self.packer_pt, 2, CS.button_counter, cancel_button=True))
 
-    self.highway_assist_pressed_last = highway_assist_pressed
+    # self.highway_assist_pressed_last = highway_assist_pressed
 
     # **** Steering Controls ************************************************ #
 
