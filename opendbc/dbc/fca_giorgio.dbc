@@ -155,8 +155,7 @@ BO_ 601 NEW_MSG_259: 8 XXX
 
 BO_ 762 ACC_BUTTON: 3 XXX
  SG_ CANCEL_OR_RADAR : 0|1@0+ (1,0) [0|1] "" XXX
- SG_ SPEED_UP_DOWN : 3|1@0+ (1,0) [0|1] "" XXX
- SG_ SPEED_UP : 4|1@0+ (1,0) [0|1] "" XXX
+ SG_ SET_SPEED : 5|3@0+ (1,0) [0|4] "" XXX
  SG_ ACC_DISTANCE : 6|1@0+ (1,0) [0|1] "" XXX
  SG_ COUNTER : 11|4@0+ (1,0) [0|15] "" XXX
  SG_ HIGHWAY_ASSIST : 12|1@0+ (1,0) [0|1] "" XXX
@@ -269,9 +268,8 @@ CM_ SG_ 284 VEHICLE_SPEED "scale estimated";
 CM_ SG_ 502 HAPTIC_WARN_1 "correlates with steering wheel haptic";
 CM_ SG_ 502 HAPTIC_WARN_2 "correlates with steering wheel haptic";
 CM_ SG_ 762 CANCEL_OR_RADAR "When ACC is engaged, button functions as cancel. When radar is off, button enables radar (ACC remains disengaged)";
-CM_ SG_ 762 SPEED_UP_DOWN "Rises for both up and down";
-CM_ SG_ 762 SPEED_UP "Lowers for only up";
 CM_ BO_ 1198 "Definite LKA activity, probably contains lane-line recognition and lane departure signals, indicator of LKA vs TJA, perhaps indicator of active assist in map-permitted areas";
 VAL_ 262 LKA_STATUS 0 "standby" 1 "lka_active";
+VAL_ 762 SET_SPEED 0 "ResInc_Stage2" 1 "ResInc_Stage1" 2 "Inactive" 3 "SetDec_Stage1" 4 "SetDec_Stage2";
 VAL_ 1442 DRIVE_GEAR 13 "PARK" 14 "REVERSE";
 VAL_ 1449 GEAR 1 "PARK" 2 "REVERSE" 3 "NEUTRAL" 4 "DRIVE" 6 "MANUAL";
