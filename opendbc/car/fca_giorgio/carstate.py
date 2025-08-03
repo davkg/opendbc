@@ -36,6 +36,7 @@ class CarState(CarStateBase):
       unit=1.0,
     )
     ret.standstill = ret.vEgoRaw == 0
+    ret.vEgoCluster = pt_cp.vl["NEW_MSG_11C"]["VEHICLE_SPEED"]
 
     ret.steeringAngleDeg = pt_cp.vl["EPS_1"]["STEERING_ANGLE"]
     ret.steeringRateDeg = pt_cp.vl["EPS_1"]["STEERING_RATE"]

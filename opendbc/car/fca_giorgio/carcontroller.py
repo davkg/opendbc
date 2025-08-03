@@ -33,8 +33,8 @@ class CarController(CarControllerBase):
 
     # Detect rising edge of highway assist button
     if highway_assist_pressed and not self.highway_assist_pressed_last:
-      self.cancel_button_send_frame = self.frame + 101 # 101 to land on 50Hz after 1 second
-      self.cancel_button_end_frame = self.frame + 501 # Hold cancel for 5 seconds
+      self.cancel_button_send_frame = self.frame + 100 # 101 to land on 50Hz after 1 second
+      self.cancel_button_end_frame = self.frame + 500 # Hold cancel for 5 seconds
 
     if (
       self.frame >= self.cancel_button_send_frame and
