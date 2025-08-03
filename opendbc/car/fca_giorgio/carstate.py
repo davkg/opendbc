@@ -65,7 +65,9 @@ class CarState(CarStateBase):
     ret.leftBlindspot = bool(pt_cp.vl["BLIND_SPOT"]["BLIND_SPOT_LEFT"])
     ret.rightBlindspot = bool(pt_cp.vl["BLIND_SPOT"]["BLIND_SPOT_RIGHT"])
 
+    # TODO: find all doors
     ret.doorOpen = bool(pt_cp.vl["BCM_2"]["DOOR_OPEN_FL"])
+    ret.seatbeltUnlatched = bool(pt_cp.vl["NEW_MSG_257"]["SEATBELT_UNBUCKLED_FL"])
 
     prev_acc_distance_button = self.acc_distance_button
     self.acc_distance_button = pt_cp.vl["ACC_BUTTON"]["ACC_DISTANCE"]
