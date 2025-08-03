@@ -44,7 +44,7 @@ class CarController(CarControllerBase):
       can_sends.append(fca_giorgiocan.create_acc_button_control(self.packer_pt, CANBUS.pt, CS.button_counter, cancel_button=True))
       can_sends.append(fca_giorgiocan.create_acc_button_control(self.packer_pt, 2, CS.button_counter, cancel_button=True))
 
-    # self.highway_assist_pressed_last = highway_assist_pressed
+    self.highway_assist_pressed_last = highway_assist_pressed
 
     # **** Steering Controls ************************************************ #
 
