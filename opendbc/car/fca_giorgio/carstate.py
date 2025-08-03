@@ -48,13 +48,15 @@ class CarState(CarStateBase):
     gear = self.shifter_values.get(pt_cp.vl["GEAR"]["GEAR"])
     ret.gearShifter = self.parse_gear_shifter(gear)
 
-    ret.cruiseState.available = pt_cp.vl["ACC_1"]["CRUISE_STATUS"] in (1, 2, 3)
-    ret.cruiseState.enabled = pt_cp.vl["ACC_1"]["CRUISE_STATUS"] in (2, 3)
+    ret.cruiseState.available = pt_cp.vl["ACC_1"]["CRUISE_STATUS"] in (1, 2, 3, 4, 5)
+    ret.cruiseState.enabled = pt_cp.vl["ACC_1"]["CRUISE_STATUS"] in (2, 4)
     ret.cruiseState.speed = pt_cp.vl["ACC_1"]["HUD_SPEED"] * CV.KPH_TO_MS
 
-    # TODO: rename ACCEL_PEDAL as both gas pedal and ACC affect it
-    # Can infer gasPressed with engine throttle and cruiseState, but unsure if this covers all states
-    ret.gasPressed = pt_cp.vl["ENGINE_1"]["ACCEL_PEDAL"] > 0 and not ret.cruiseState.enabled
+    # Unable to find a gas pedal signal, so inferring gasPressed with engine throttle and CRUISE_STATUS
+    # TODO: rename ACCEL_PEDAL to ENGINE_THROTTLE as both gas pedal and ACC affect it
+    # TODO: ensure this covers all CRUISE_STATUS states
+    pedal_controlled_by_cruise = pt_cp.vl["ACC_1"]["CRUISE_STATUS"] == 2
+    ret.gasPressed = pt_cp.vl["ENGINE_1"]["ACCEL_PEDAL"] > 0 and not pedal_controlled_by_cruise
     ret.brake = pt_cp.vl["ABS_4"]["BRAKE_PRESSURE"]
     ret.brakePressed = bool(pt_cp.vl["ABS_3"]["BRAKE_PEDAL_SWITCH"])
     ret.parkingBrake = bool(pt_cp.vl["GEAR"]["PARKING_BRAKE"])
