@@ -19,7 +19,7 @@ class CarController(CarControllerBase):
     self.cancel_button_send_frame = -1
     self.cancel_button_end_frame = -1
 
-    self.button_frame = -1
+    self.button_frame = -999999
 
 
   def update(self, CC, CS, now_nanos):
@@ -71,6 +71,14 @@ class CarController(CarControllerBase):
       self.frame >= self.button_frame + 1900 and
       (self.frame - self.button_frame) % 2 == 0 and
       self.frame < self.button_frame + 2200
+    ):
+      can_sends.extend([fca_giorgiocan.create_acc_button_control(self.packer_pt, CANBUS.pt, CS.button_counter, cancel_button=True)] * 25)
+      can_sends.extend([fca_giorgiocan.create_acc_button_control(self.packer_pt, 2, CS.button_counter, cancel_button=True)] * 25)
+
+    # Test 5: send cancel button at 100Hz
+    if (
+      self.frame >= self.button_frame + 2500 and
+      self.frame < self.button_frame + 2800
     ):
       can_sends.extend([fca_giorgiocan.create_acc_button_control(self.packer_pt, CANBUS.pt, CS.button_counter, cancel_button=True)] * 25)
       can_sends.extend([fca_giorgiocan.create_acc_button_control(self.packer_pt, 2, CS.button_counter, cancel_button=True)] * 25)
