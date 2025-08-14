@@ -1,8 +1,10 @@
 from opendbc.can import CANPacker
-from opendbc.car import Bus, apply_driver_steer_torque_limits
+from opendbc.car import Bus
+from opendbc.car.lateral import apply_driver_steer_torque_limits
 from opendbc.car.interfaces import CarControllerBase
 from opendbc.car.fca_giorgio import fca_giorgiocan
 from opendbc.car.fca_giorgio.values import CANBUS, CarControllerParams
+
 
 class CarController(CarControllerBase):
   def __init__(self, dbc_names, CP):
@@ -20,7 +22,6 @@ class CarController(CarControllerBase):
     self.cancel_button_end_frame = -1
 
     self.button_frame = -999999
-
 
   def update(self, CC, CS, now_nanos):
     actuators = CC.actuators

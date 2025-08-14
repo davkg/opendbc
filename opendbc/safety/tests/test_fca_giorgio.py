@@ -6,6 +6,7 @@ from opendbc.safety.tests.libsafety import libsafety_py
 import opendbc.safety.tests.common as common
 from opendbc.safety.tests.common import CANPackerPanda
 
+
 class TestFcaGiorgio_Safety(common.PandaCarSafetyTest, common.DriverTorqueSteeringSafetyTest):
   TX_MSGS = [[0x1F6, 0], [0x4AE, 0], [0x547, 0], [0x2FA, 0]]
   STANDSTILL_THRESHOLD = 0

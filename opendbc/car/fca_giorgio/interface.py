@@ -3,6 +3,7 @@ from opendbc.car.interfaces import CarInterfaceBase
 from opendbc.car.fca_giorgio.carcontroller import CarController
 from opendbc.car.fca_giorgio.carstate import CarState
 
+
 class CarInterface(CarInterfaceBase):
   CarState = CarState
   CarController = CarController

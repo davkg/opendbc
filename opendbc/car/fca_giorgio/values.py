@@ -7,6 +7,7 @@ from opendbc.car.fw_query_definitions import FwQueryConfig, Request, StdQueries
 
 Ecu = CarParams.Ecu
 
+
 class CarControllerParams:
   STEER_STEP = 1
   HUD_1_STEP = 50

@@ -8,6 +8,7 @@ GearShifter = structs.CarState.GearShifter
 
 ButtonType = structs.CarState.ButtonEvent.Type
 
+
 class CarState(CarStateBase):
   def __init__(self, CP):
     super().__init__(CP)
@@ -21,7 +22,6 @@ class CarState(CarStateBase):
     self.highway_assist_button = 0
     self.acc_distance_button = 0
     self.button_counter = 0
-
 
   def update(self, can_parsers) -> structs.CarState:
     pt_cp = can_parsers[Bus.pt]
@@ -83,7 +83,6 @@ class CarState(CarStateBase):
 
     self.frame += 1
     return ret
-
 
   @staticmethod
   def get_can_parsers(CP):
