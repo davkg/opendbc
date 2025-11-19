@@ -128,8 +128,8 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
     self.last_driver_distance_button_frame = 0
     self.distance_button_send_remaining = 0
     self.distance_sequence_step = -1
-    self.last_lkas_button_frame = 0
-    self.lkas_button_send_remaining = 0
+    # self.last_lkas_button_frame = 0
+    # self.lkas_button_send_remaining = 0
 
   def update(self, CC, CC_SP, CS, now_nanos):
     MadsCarController.update(self, self.CP, CC, CC_SP)
@@ -336,19 +336,19 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
           if not self.CP_SP.enableGasInterceptor:
             self.gas = pcm_accel / self.params.NIDEC_GAS_MAX
 
-    if self.CP.carFingerprint in HONDA_BOSCH_RADARLESS:
-      # Start a 5-frame button press to toggle LKAS when it's not in ready state.
-      # This activates the LKAS camera to output moving lane lines for the HUD.
-      if (CC.enabled and
-          not CS.lkas_ready and
-          self.lkas_button_send_remaining == 0 and
-          self.frame >= self.last_lkas_button_frame + 100): # Wait 100 frames for HUD to update
-        self.lkas_button_send_remaining = 5
+    # if self.CP.carFingerprint in HONDA_BOSCH_RADARLESS:
+    #   # Start a 5-frame button press to toggle LKAS when it's not in ready state.
+    #   # This activates the LKAS camera to output moving lane lines for the HUD.
+    #   if (CC.enabled and
+    #       not CS.lkas_ready and
+    #       self.lkas_button_send_remaining == 0 and
+    #       self.frame >= self.last_lkas_button_frame + 100): # Wait 100 frames for HUD to update
+    #     self.lkas_button_send_remaining = 5
 
-      if self.lkas_button_send_remaining > 0:
-        self.last_lkas_button_frame = self.frame
-        self.lkas_button_send_remaining -= 1
-        can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, 0, CruiseSettings.LKAS, self.CP.carFingerprint))
+    #   if self.lkas_button_send_remaining > 0:
+    #     self.last_lkas_button_frame = self.frame
+    #     self.lkas_button_send_remaining -= 1
+    #     can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, 0, CruiseSettings.LKAS, self.CP.carFingerprint))
 
     # Intelligent Cruise Button Management
     can_sends.extend(IntelligentCruiseButtonManagementInterface.update(self, CC_SP, self.packer, self.frame,
