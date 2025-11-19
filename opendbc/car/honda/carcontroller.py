@@ -246,11 +246,11 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
 
       # ACC distance shortcut for a 1 <-> 2 toggle
       # Start button press sequence for HUD distance 1 -> 2 as triggered by driver button press
-      if (CC.enabled and
+      if (self.frame == self.last_driver_distance_button_frame and
+          CC.enabled and
           cruise_button == 0 and
           CS.hudDistance == 1 and
-          self.distance_sequence_step == -1 and
-          self.frame == self.last_driver_distance_button_frame):
+          self.distance_sequence_step == -1):
         self.distance_sequence_step = 0
 
       # Send 2-frame button presses with 2-frame gaps
@@ -339,9 +339,6 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
             self.gas = pcm_accel / self.params.NIDEC_GAS_MAX
 
     if self.CP.carFingerprint in HONDA_BOSCH_RADARLESS:
-      if CS.lkas_ready:
-        self.lkas_button_send_remaining = 0
-
       # Start a 5-frame button press to toggle LKAS when it's not in ready state.
       # This activates the LKAS camera to output moving lane lines for the HUD.
       if (CC.enabled and
