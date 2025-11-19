@@ -241,17 +241,15 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
       if cruise_button != 0:
         can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, cruise_button, 0, self.CP.carFingerprint))
 
+      # ACC distance shortcut
+      # Start button press sequence for HUD distance 1 -> 0 -> 3 -> 2 as triggered by driver button release
       if any(be.type == ButtonType.gapAdjustCruise and not be.pressed for be in CS.out.buttonEvents):
         self.last_driver_distance_button_frame = self.frame
-
-      # ACC distance shortcut for a 1 <-> 2 toggle
-      # Start button press sequence for HUD distance 1 -> 2 as triggered by driver button press
-      if (self.frame == self.last_driver_distance_button_frame and
-          CC.enabled and
-          cruise_button == 0 and
-          CS.hudDistance == 1 and
-          self.distance_sequence_step == -1):
-        self.distance_sequence_step = 0
+        if (CC.enabled and
+            cruise_button == 0 and
+            CS.hudDistance == 1 and
+            self.distance_sequence_step == -1):
+          self.distance_sequence_step = 0
 
       # Send 2-frame button presses with 2-frame gaps
       if self.distance_sequence_step > -1:
