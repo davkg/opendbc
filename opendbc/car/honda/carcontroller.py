@@ -253,12 +253,11 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
 
       # Send 2-frame button presses with 2-frame gaps
       if self.distance_sequence_step > -1:
-        # Send None for 0, 1, 4, 5, 8, 9
         cruise_setting = 0
-        if self.distance_sequence_step in (2, 3, 6, 7):
+        if self.distance_sequence_step in (1, 2, 5, 6):
           cruise_setting = CruiseSettings.DISTANCE
-        # Don't overlap with stock forwarded button frame (25 Hz)
-        if (self.frame - self.last_driver_distance_button_frame) % 4 != 0:
+        # Don't overlap with forwarded button frame (25 Hz)
+        if (self.frame - self.last_driver_distance_button_frame + 1) % 4 != 0:
           can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, 0, cruise_setting, self.CP.carFingerprint))
 
         self.distance_sequence_step += 1
