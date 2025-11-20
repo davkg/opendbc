@@ -124,10 +124,8 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
                                      # k_i= ([0., 5., 35.], [1.2, 0.8, 0.5]),
                                      k_f=1, rate= 1 / DT_CTRL / 2)
     self.pitch = 0.0
-    self.last_distance_button_frame = 0
-    self.last_driver_distance_button_frame = 0
+    self.distance_shortcut_timer = 0
     self.distance_button_send_remaining = 0
-    self.distance_sequence_step = -1
     # self.last_lkas_button_frame = 0
     # self.lkas_button_send_remaining = 0
 
@@ -241,28 +239,36 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
       if cruise_button != 0:
         can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, cruise_button, 0, self.CP.carFingerprint))
 
-      # ACC distance shortcut
-      # Start button press sequence for HUD distance 1 -> 0 -> 3 -> 2 as triggered by driver button release
-      if any(be.type == ButtonType.gapAdjustCruise and not be.pressed for be in CS.out.buttonEvents):
-        self.last_driver_distance_button_frame = self.frame
-        if (CC.enabled and
-            cruise_button == 0 and
-            CS.hudDistance == 1 and
-            self.distance_sequence_step == -1):
-          self.distance_sequence_step = 0
+      # ACC Distance shortcut for a 1 <-> 2 toggle.
+      # Active for 2s after the driver releases the distance button.
+      # Distance button automatically pressed for 0 -> 3 -> 2 cycle.
+      if CC.enabled:
+        distance_button_pressed = any(be.type == ButtonType.gapAdjustCruise and be.pressed for be in CS.out.buttonEvents)
+        distance_button_released = any(be.type == ButtonType.gapAdjustCruise and not be.pressed for be in CS.out.buttonEvents)
 
-      # Send 2-frame button presses with 2-frame gaps
-      if self.distance_sequence_step > -1:
-        cruise_setting = 0
-        if self.distance_sequence_step in (1, 2, 5, 6):
-          cruise_setting = CruiseSettings.DISTANCE
-        # Don't overlap with forwarded button frame (25 Hz)
-        if (self.frame - self.last_driver_distance_button_frame + 1) % 4 != 0:
-          can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, 0, cruise_setting, self.CP.carFingerprint))
+        # Cancel if driver presses button manually or we reached target
+        if distance_button_pressed or CS.hudDistance == 2:
+          self.distance_shortcut_timer = 0
+        # Start if driver releases button at Distance 1
+        elif distance_button_released and CS.hudDistance == 1:
+          self.distance_shortcut_timer = 200 # 2s timeout
+          self.distance_last_skipped = -1
 
-        self.distance_sequence_step += 1
-        if self.distance_sequence_step == 10:
-          self.distance_sequence_step = -1
+        if self.distance_shortcut_timer > 0:
+          self.distance_shortcut_timer -= 1
+          if (self.distance_button_send_remaining == 0 and
+              CS.hudDistance in (0, 3) and
+              CS.hudDistance != self.distance_last_skipped):
+            self.distance_button_send_remaining = 5
+            self.distance_last_skipped = CS.hudDistance # Mark handled
+
+      cruise_setting = 0
+      if self.distance_button_send_remaining > 0:
+        cruise_setting = CruiseSettings.DISTANCE
+        self.distance_button_send_remaining -= 1
+
+      if cruise_button == 0 and cruise_setting != 0:
+        can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, 0, cruise_setting, self.CP.carFingerprint))
 
     else:
       # Send gas and brake commands.
