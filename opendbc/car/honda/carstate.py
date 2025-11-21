@@ -70,6 +70,7 @@ class CarState(CarStateBase, CarStateExt):
     prev_cruise_setting = self.cruise_setting
     self.cruise_setting = cp.vl["SCM_BUTTONS"]["CRUISE_SETTING"]
     self.cruise_buttons = cp.vl["SCM_BUTTONS"]["CRUISE_BUTTONS"]
+    self.cruise_buttons_counter = cp.vl["SCM_BUTTONS"]["COUNTER"]
 
     # used for car hud message
     self.is_metric = not cp.vl["CAR_SPEED"]["IMPERIAL_UNIT"]

@@ -127,6 +127,7 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
     self.distance_start_frame = -9999
     self.distance_last_skipped = -1
     self.distance_button_send_remaining = 0
+    self.button_counter = 0
     # self.last_lkas_button_frame = 0
     # self.lkas_button_send_remaining = 0
 
@@ -243,34 +244,36 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
       # ACC Distance shortcut for a 1 <-> 2 toggle.
       # After driver releases the distance button, the button is automatically
       # pressed twice more for a 1 -> 0 -> 3 -> 2 cycle.
-      if CC.enabled:
-        distance_button_pressed = any(be.type == ButtonType.gapAdjustCruise and be.pressed for be in CS.out.buttonEvents)
+      distance_button_pressed = any(be.type == ButtonType.gapAdjustCruise and be.pressed for be in CS.out.buttonEvents)
+      if distance_button_pressed:
+        self.distance_start_frame = -9999
+        self.distance_button_send_remaining = 0
+      if CC.enabled and cruise_button == 0:
         distance_button_released = any(be.type == ButtonType.gapAdjustCruise and not be.pressed for be in CS.out.buttonEvents)
-        if distance_button_pressed:
-          self.distance_start_frame = -9999
-          self.distance_button_send_remaining = 0
-        elif distance_button_released and CS.hudDistance == 1:
+        if distance_button_released and CS.hudDistance == 1:
           self.distance_start_frame = self.frame
           self.distance_last_skipped = 1
 
-        # 2s timeout
-        if (self.frame < self.distance_start_frame + 200 and
+        # 1s timeout
+        if (self.frame < self.distance_start_frame + 100 and
             self.frame >= self.distance_start_frame and
             self.distance_button_send_remaining == 0 and
             CS.hudDistance in (0, 3) and
             CS.hudDistance != self.distance_last_skipped):
-          self.distance_button_send_remaining = 10
+          # Align counter with stock frames
+          self.distance_button_send_remaining = 5
+          if (self.frame + 1 - self.distance_start_frame) % 4 == 0:
+            self.distance_button_send_remaining = 6
+          self.button_counter = CS.cruise_buttons_counter
           self.distance_last_skipped = CS.hudDistance # Mark handled
 
-      cruise_setting = 0
-      if self.distance_button_send_remaining > 0:
-        # Wait 5 frames before starting button press
-        if self.distance_button_send_remaining < 6:
+        cruise_setting = 0
+        if self.distance_button_send_remaining > 0:
           cruise_setting = CruiseSettings.DISTANCE
-        self.distance_button_send_remaining -= 1
-
-      if cruise_button == 0 and cruise_setting != 0:
-        can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, 0, cruise_setting, self.CP.carFingerprint))
+          self.button_counter += 1
+          can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, 0, cruise_setting, self.CP.carFingerprint,
+                                                         counter=self.button_counter))
+          self.distance_button_send_remaining -= 1
 
     else:
       # Send gas and brake commands.
