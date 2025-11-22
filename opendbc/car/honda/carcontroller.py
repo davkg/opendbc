@@ -128,6 +128,7 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
     self.distance_last_skipped = -1
     self.distance_button_send_remaining = 0
     self.button_counter = 0
+    self.button_frame = 0
     # self.last_lkas_button_frame = 0
     # self.lkas_button_send_remaining = 0
 
@@ -230,6 +231,9 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
       pcm_accel = int(np.clip((accel / 1.44) / max_accel, 0.0, 1.0) * self.params.NIDEC_GAS_MAX)
 
     if not self.CP.openpilotLongitudinalControl:
+      if CS.cruise_buttons_counter != CS.prev_cruise_buttons_counter:
+        self.button_frame = self.frame
+
       if self.frame % 2 == 0 and self.CP.carFingerprint not in HONDA_BOSCH_RADARLESS | HONDA_BOSCH_CANFD:
         can_sends.append(hondacan.create_bosch_supplemental_1(self.packer, self.CAN))
       # If using stock ACC, spam cancel command to kill gas when OP disengages.
@@ -262,16 +266,14 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
             CS.hudDistance in (0, 3) and
             CS.hudDistance != self.distance_last_skipped):
           self.distance_button_send_remaining = 2
-          self.button_counter = CS.cruise_buttons_counter # Continue from stock counter
           self.distance_last_skipped = CS.hudDistance # Mark handled
 
-        cruise_setting = 0
         if (self.distance_button_send_remaining > 0 and
             (self.frame - self.distance_start_frame) % 4 == 0):
           cruise_setting = CruiseSettings.DISTANCE
-          self.button_counter += 1
+          button_counter = CS.cruise_buttons_counter + 1
           can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, 0, cruise_setting, self.CP.carFingerprint,
-                                                         counter=self.button_counter))
+                                                         counter=button_counter))
           self.distance_button_send_remaining -= 1
 
     else:

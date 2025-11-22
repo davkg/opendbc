@@ -352,7 +352,7 @@ static bool honda_tx_hook(const CANPacket_t *msg) {
 static bool honda_bosch_fwd_hook(int bus_num, int addr) {
   bool block_msg = false;
 
-  // Only applicable for radarless Bosch?
+  // Only applicable to radarless Bosch?
   if (controls_allowed && honda_bosch_radarless && (bus_num == 0)) {
     if (addr == 0x296) {
       const uint32_t BUTTON_BLOCK_WINDOW_US = 25000U; // 25 ms (2 frames)
