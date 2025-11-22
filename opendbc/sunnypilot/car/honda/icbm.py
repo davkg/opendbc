@@ -21,35 +21,38 @@ BUTTONS = {
 
 
 class IntelligentCruiseButtonManagementInterface(IntelligentCruiseButtonManagementInterfaceBase):
-  BUTTON_SEND_DURATION = 4  # frames to send button
-  BUTTON_PAUSE_DURATION = 20  # frames to pause between sends
-
   def __init__(self, CP, CP_SP):
     super().__init__(CP, CP_SP)
     self.current_button = SendButtonState.none
-    self.button_send_frame = 0
+    self.button_send_remaining = 0
+    self.button_pause_remaining = 0
 
-  def update(self, CC_SP, packer, frame, last_button_frame, CAN) -> list[CanData]:
+  def update(self, CC_SP, packer, frame, last_button_frame, counter, CAN) -> list[CanData]:
     can_sends = []
     self.CC_SP = CC_SP
     self.ICBM = CC_SP.intelligentCruiseButtonManagement
     self.frame = frame
     self.last_button_frame = last_button_frame
 
-    frames_elapsed = frame - self.button_send_frame
-    total_cycle = self.BUTTON_SEND_DURATION + self.BUTTON_PAUSE_DURATION
+    if self.ICBM.sendButton != SendButtonState.none:
+      if (self.button_send_remaining == 0 and
+          self.button_pause_remaining == 0):
+        self.current_button = self.ICBM.sendButton
+        # Pulse button presses by sending then pausing
+        self.button_send_remaining = 2
+        self.button_pause_remaining = 2
 
-    # Reset to pause state after send duration
-    if frames_elapsed >= self.BUTTON_SEND_DURATION and self.current_button != SendButtonState.none:
-      self.current_button = SendButtonState.none
-    # Start new tap if button requested and cycle complete
-    if self.ICBM.sendButton != SendButtonState.none and self.current_button == SendButtonState.none and frames_elapsed >= total_cycle:
-      self.current_button = self.ICBM.sendButton
-      self.button_send_frame = frame
+       # Send button 1 frame before stock frame, which will block the stock frame from being forwarded
+      if (self.frame - self.last_button_frame) % 4 == 2:
+        if self.button_send_remaining > 0:
+          send_button = BUTTONS[self.current_button]
+          can_sends.append(hondacan.spam_buttons_command(packer, CAN, send_button, 0, self.CP.carFingerprint, counter=counter))
+          self.button_send_remaining -= 1
+        elif self.button_pause_remaining > 0:
+          self.button_pause_remaining -= 1
 
-    # Send button if currently in send phase
-    if self.current_button != SendButtonState.none and (frame - self.button_send_frame) < self.BUTTON_SEND_DURATION:
-      send_button = BUTTONS[self.current_button]
-      can_sends.append(hondacan.spam_buttons_command(packer, CAN, send_button, 0, self.CP.carFingerprint))
+    elif self.ICBM.sendButton == SendButtonState.none:
+      self.button_send_remaining = 0
+      self.button_pause_remaining = 0
 
     return can_sends

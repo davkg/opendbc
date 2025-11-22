@@ -242,12 +242,16 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
         cruise_button = CruiseButtons.CANCEL
       elif CC.cruiseControl.resume:
         cruise_button = CruiseButtons.RES_ACCEL
-      if cruise_button != 0:
-        can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, cruise_button, 0, self.CP.carFingerprint))
+      # Send button 1 frame before stock frame
+      if (cruise_button != 0 and
+          (self.frame - self.button_frame) % 4 == 2):
+        can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, cruise_button, 0, self.CP.carFingerprint,
+                                                       counter=CS.cruise_buttons_counter + 1))
 
       # ACC Distance shortcut for a 1 <-> 2 toggle.
       # After driver releases the distance button, the button is automatically
       # pressed twice more for a 1 -> 0 -> 3 -> 2 cycle.
+      cruise_setting = 0
       distance_button_pressed = any(be.type == ButtonType.gapAdjustCruise and be.pressed for be in CS.out.buttonEvents)
       if distance_button_pressed:
         self.distance_start_frame = -9999
@@ -275,6 +279,11 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
           can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, 0, cruise_setting, self.CP.carFingerprint,
                                                          counter=button_counter))
           self.distance_button_send_remaining -= 1
+
+      # Prioritize cancel/resume spam over Intelligent Cruise Button Management
+      if not cruise_button and not cruise_setting:
+        can_sends.extend(IntelligentCruiseButtonManagementInterface.update(self, CC_SP, self.packer, self.frame, self.button_frame,
+                                                                           CS.cruise_buttons_counter + 1, self.CAN))
 
     else:
       # Send gas and brake commands.
@@ -361,9 +370,6 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
     #     self.lkas_button_send_remaining -= 1
     #     can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, 0, CruiseSettings.LKAS, self.CP.carFingerprint))
 
-    # Intelligent Cruise Button Management
-    can_sends.extend(IntelligentCruiseButtonManagementInterface.update(self, CC_SP, self.packer, self.frame,
-                                                                       self.last_button_frame, self.CAN))
 
     new_actuators = actuators.as_builder()
     new_actuators.speed = self.speed
