@@ -86,6 +86,9 @@ static uint8_t honda_get_counter(const CANPacket_t *msg) {
   return cnt;
 }
 
+// Timestamp of last button message transmitted by openpilot (microseconds)
+static volatile uint32_t honda_last_button_tx_ts = 0U;
+
 static int HONDA_GET_INTERCEPTOR(const CANPacket_t *msg) {
   uint16_t val1 = (uint16_t)((uint16_t)msg->data[0] << 8U) | (uint16_t)msg->data[1];
   uint16_t val2 = (uint16_t)((uint16_t)msg->data[2] << 8U) | (uint16_t)msg->data[3];
@@ -335,7 +338,31 @@ static bool honda_tx_hook(const CANPacket_t *msg) {
     }
   }
 
+  // If we send a button frame when controls are on, record the transmission timestamp
+  // so we can briefly block the stock button frame from being forwarded.
+  if ((msg->addr == 0x296U) && controls_allowed && (msg->bus == bus_buttons)) {
+    honda_last_button_tx_ts = microsecond_timer_get();
+  }
+
   return tx;
+}
+
+// After transmitting a button frame when controls are on, briefly block forwarding the
+// stock button message to prevent overlap.
+static bool honda_bosch_fwd_hook(int bus_num, int addr) {
+  bool block_msg = false;
+
+  // Only applicable for radarless Bosch?
+  if (controls_allowed && honda_bosch_radarless && (bus_num == 2)) {
+    if (addr == 0x296) {
+      const uint32_t BUTTON_BLOCK_WINDOW_US = 25000U; // 25 ms (2 frames)
+      if (get_ts_elapsed(microsecond_timer_get(), honda_last_button_tx_ts) < BUTTON_BLOCK_WINDOW_US) {
+        block_msg = true;
+      }
+    }
+  }
+
+  return block_msg;
 }
 
 static safety_config honda_nidec_init(uint16_t param) {
@@ -534,6 +561,7 @@ const safety_hooks honda_bosch_hooks = {
   .init = honda_bosch_init,
   .rx = honda_rx_hook,
   .tx = honda_tx_hook,
+  .fwd = honda_bosch_fwd_hook,
   .get_counter = honda_get_counter,
   .get_checksum = honda_get_checksum,
   .compute_checksum = honda_compute_checksum,
