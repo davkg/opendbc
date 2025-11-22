@@ -251,7 +251,8 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
       if CC.enabled and cruise_button == 0:
         distance_button_released = any(be.type == ButtonType.gapAdjustCruise and not be.pressed for be in CS.out.buttonEvents)
         if distance_button_released and CS.hudDistance == 1:
-          self.distance_start_frame = self.frame
+          # Start 1 frame before next stock button frame (25 Hz)
+          self.distance_start_frame = self.frame + 2
           self.distance_last_skipped = 1
 
         # 1s timeout
@@ -260,15 +261,13 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
             self.distance_button_send_remaining == 0 and
             CS.hudDistance in (0, 3) and
             CS.hudDistance != self.distance_last_skipped):
-          # Align counter with stock frames
-          self.distance_button_send_remaining = 5
-          if (self.frame + 1 - self.distance_start_frame) % 4 == 0:
-            self.distance_button_send_remaining = 6
-          self.button_counter = CS.cruise_buttons_counter
+          self.distance_button_send_remaining = 2
+          self.button_counter = CS.cruise_buttons_counter # Continue from stock counter
           self.distance_last_skipped = CS.hudDistance # Mark handled
 
         cruise_setting = 0
-        if self.distance_button_send_remaining > 0:
+        if (self.distance_button_send_remaining > 0 and
+            (self.frame - self.distance_start_frame) % 4 == 0):
           cruise_setting = CruiseSettings.DISTANCE
           self.button_counter += 1
           can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, 0, cruise_setting, self.CP.carFingerprint,
