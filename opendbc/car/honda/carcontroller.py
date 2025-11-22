@@ -230,28 +230,30 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
       pcm_speed = float(np.interp(gas - brake, pcm_speed_BP, pcm_speed_V))
       pcm_accel = int(np.clip((accel / 1.44) / max_accel, 0.0, 1.0) * self.params.NIDEC_GAS_MAX)
 
+    if CS.cruise_buttons_counter != CS.prev_cruise_buttons_counter:
+      self.button_frame = self.frame
+
+    # Send button 1 frame before stock frame (25 Hz), which will block the stock frame from forwarding
+    is_button_send_frame = (self.frame - self.button_frame) % 4 == 2
+
+    cruise_button = 0
+    cruise_setting = 0
     if not self.CP.openpilotLongitudinalControl:
-      if CS.cruise_buttons_counter != CS.prev_cruise_buttons_counter:
-        self.button_frame = self.frame
 
       if self.frame % 2 == 0 and self.CP.carFingerprint not in HONDA_BOSCH_RADARLESS | HONDA_BOSCH_CANFD:
         can_sends.append(hondacan.create_bosch_supplemental_1(self.packer, self.CAN))
       # If using stock ACC, spam cancel command to kill gas when OP disengages.
-      cruise_button = 0
       if pcm_cancel_cmd:
         cruise_button = CruiseButtons.CANCEL
       elif CC.cruiseControl.resume:
         cruise_button = CruiseButtons.RES_ACCEL
-      # Send button 1 frame before stock frame
-      if (cruise_button != 0 and
-          (self.frame - self.button_frame) % 4 == 2):
+      if cruise_button != 0 and is_button_send_frame:
         can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, cruise_button, 0, self.CP.carFingerprint,
                                                        counter=CS.cruise_buttons_counter + 1))
 
       # ACC Distance shortcut for a 1 <-> 2 toggle.
       # After driver releases the distance button, the button is automatically
       # pressed twice more for a 1 -> 0 -> 3 -> 2 cycle.
-      cruise_setting = 0
       distance_button_pressed = any(be.type == ButtonType.gapAdjustCruise and be.pressed for be in CS.out.buttonEvents)
       if distance_button_pressed:
         self.distance_start_frame = -9999
@@ -259,11 +261,10 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
       if CC.enabled and cruise_button == 0:
         distance_button_released = any(be.type == ButtonType.gapAdjustCruise and not be.pressed for be in CS.out.buttonEvents)
         if distance_button_released and CS.hudDistance == 1:
-          # Start 1 frame before next stock button frame (25 Hz)
-          self.distance_start_frame = self.frame + 2
+          self.distance_start_frame = self.frame
           self.distance_last_skipped = 1
 
-        # 1s timeout
+        # 1s timeout from driver releasing distance button
         if (self.frame < self.distance_start_frame + 100 and
             self.frame >= self.distance_start_frame and
             self.distance_button_send_remaining == 0 and
@@ -272,8 +273,7 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
           self.distance_button_send_remaining = 2
           self.distance_last_skipped = CS.hudDistance # Mark handled
 
-        if (self.distance_button_send_remaining > 0 and
-            (self.frame - self.distance_start_frame) % 4 == 0):
+        if (self.distance_button_send_remaining > 0 and is_button_send_frame):
           cruise_setting = CruiseSettings.DISTANCE
           button_counter = CS.cruise_buttons_counter + 1
           can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, 0, cruise_setting, self.CP.carFingerprint,
@@ -356,19 +356,21 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
           if not self.CP_SP.enableGasInterceptor:
             self.gas = pcm_accel / self.params.NIDEC_GAS_MAX
 
-    # if self.CP.carFingerprint in HONDA_BOSCH_RADARLESS:
-    #   # Start a 5-frame button press to toggle LKAS when it's not in ready state.
-    #   # This activates the LKAS camera to output moving lane lines for the HUD.
-    #   if (CC.enabled and
-    #       not CS.lkas_ready and
-    #       self.lkas_button_send_remaining == 0 and
-    #       self.frame >= self.last_lkas_button_frame + 100): # Wait 100 frames for HUD to update
-    #     self.lkas_button_send_remaining = 5
+    if self.CP.carFingerprint in HONDA_BOSCH_RADARLESS:
+      # Disable stock LKAS when active as it causes ACC to deactivate
+      if (CC.enabled and
+          CS.lkas_ready and
+          self.lkas_button_send_remaining == 0 and
+          self.frame >= self.last_lkas_button_frame + 500): # Wait 500 frames for HUD to update
+        self.lkas_button_send_remaining = 2
 
-    #   if self.lkas_button_send_remaining > 0:
-    #     self.last_lkas_button_frame = self.frame
-    #     self.lkas_button_send_remaining -= 1
-    #     can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, 0, CruiseSettings.LKAS, self.CP.carFingerprint))
+      if (self.lkas_button_send_remaining > 0 and
+          cruise_button == 0 and
+          cruise_setting == 0 and
+          is_button_send_frame:
+        self.last_lkas_button_frame = self.frame
+        self.lkas_button_send_remaining -= 1
+        can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, 0, CruiseSettings.LKAS, self.CP.carFingerprint))
 
 
     new_actuators = actuators.as_builder()
