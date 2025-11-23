@@ -275,13 +275,12 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
 
         if (self.distance_button_send_remaining > 0 and is_button_send_frame):
           cruise_setting = CruiseSettings.DISTANCE
-          button_counter = CS.cruise_buttons_counter + 1
           can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, 0, cruise_setting, self.CP.carFingerprint,
-                                                         counter=button_counter))
+                                                         counter=CS.cruise_buttons_counter + 1))
           self.distance_button_send_remaining -= 1
 
       # Prioritize cancel/resume spam over Intelligent Cruise Button Management
-      if not cruise_button and not cruise_setting:
+      if not cruise_button and not cruise_setting and is_button_send_frame:
         can_sends.extend(IntelligentCruiseButtonManagementInterface.update(self, CC_SP, self.packer, self.frame, self.button_frame,
                                                                            CS.cruise_buttons_counter + 1, self.CAN))
 
@@ -370,7 +369,7 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
           is_button_send_frame):
         self.last_lkas_button_frame = self.frame
         self.lkas_button_send_remaining -= 1
-        can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, 0, CruiseSettings.LKAS, self.CP.carFingerprint))
+        can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, 0, CruiseSettings.LKAS, self.CP.carFingerprint, counter=CS.cruise_buttons_counter + 1))
 
 
     new_actuators = actuators.as_builder()
