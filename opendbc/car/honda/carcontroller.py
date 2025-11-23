@@ -233,7 +233,8 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
     if CS.cruise_buttons_counter != CS.prev_cruise_buttons_counter:
       self.button_frame = self.frame
 
-    # Send button 1 frame before stock frame (25 Hz), which will block the stock frame from forwarding
+    # Send button 1 frame before stock frame (25 Hz)
+    # When controls_allowed, panda will block the following stock frame from being forwarded
     is_button_send_frame = (self.frame - self.button_frame) % 4 == 2
 
     cruise_button = 0
@@ -247,9 +248,8 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
         cruise_button = CruiseButtons.CANCEL
       elif CC.cruiseControl.resume:
         cruise_button = CruiseButtons.RES_ACCEL
-      if cruise_button != 0 and is_button_send_frame:
-        can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, cruise_button, 0, self.CP.carFingerprint,
-                                                       counter=CS.cruise_buttons_counter + 1))
+      if cruise_button != 0:
+        can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, cruise_button, 0, self.CP.carFingerprint))
 
       # ACC Distance shortcut for a 1 <-> 2 toggle.
       # After driver releases the distance button, the button is automatically
@@ -278,11 +278,6 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
           can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, 0, cruise_setting, self.CP.carFingerprint,
                                                          counter=CS.cruise_buttons_counter + 1))
           self.distance_button_send_remaining -= 1
-
-      # Prioritize cancel/resume spam over Intelligent Cruise Button Management
-      if not cruise_button and not cruise_setting and is_button_send_frame:
-        can_sends.extend(IntelligentCruiseButtonManagementInterface.update(self, CC_SP, self.packer, self.frame, self.button_frame,
-                                                                           CS.cruise_buttons_counter + 1, self.CAN))
 
     else:
       # Send gas and brake commands.
@@ -369,8 +364,13 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
           is_button_send_frame):
         self.last_lkas_button_frame = self.frame
         self.lkas_button_send_remaining -= 1
-        can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, 0, CruiseSettings.LKAS, self.CP.carFingerprint, counter=CS.cruise_buttons_counter + 1))
+        cruise_setting = CruiseSettings.LKAS
+        can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, 0, cruise_setting, self.CP.carFingerprint, counter=CS.cruise_buttons_counter + 1))
 
+    # Prioritize other buttons over Intelligent Cruise Button Management
+    if not cruise_button and not cruise_setting and is_button_send_frame:
+      can_sends.extend(IntelligentCruiseButtonManagementInterface.update(self, CC_SP, self.packer, self.frame, self.button_frame,
+                                                                          CS.cruise_buttons_counter + 1, self.CAN))
 
     new_actuators = actuators.as_builder()
     new_actuators.speed = self.speed

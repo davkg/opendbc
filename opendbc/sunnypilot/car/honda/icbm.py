@@ -40,7 +40,7 @@ class IntelligentCruiseButtonManagementInterface(IntelligentCruiseButtonManageme
         self.current_button = self.ICBM.sendButton
         # Pulse button presses by sending then pausing
         self.button_send_remaining = 2
-        self.button_pause_remaining = 2
+        self.button_pause_remaining = 6 # Pause long enough for HUD to update
 
        # Send button 1 frame before stock frame, which will block the stock frame from being forwarded
       if (self.frame - self.last_button_frame) % 4 == 2:
