@@ -356,7 +356,7 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
       if (CC.enabled and
           CS.lkas_ready and
           self.lkas_button_send_remaining == 0 and
-          self.frame >= self.last_lkas_button_frame + 500): # Wait 500 frames for HUD to update
+          self.frame >= self.last_lkas_button_frame + 100): # Wait 100 frames for HUD to update
         self.lkas_button_send_remaining = 2
 
       if (self.lkas_button_send_remaining > 0 and
