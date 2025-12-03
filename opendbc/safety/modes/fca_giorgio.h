@@ -1,6 +1,6 @@
 #pragma once
 
-#include "opendbc/safety/safety_declarations.h"
+#include "opendbc/safety/declarations.h"
 
 // CAN bus numbers
 //#define FCA_GIORGIO_MAIN 0
@@ -70,7 +70,7 @@ static safety_config fca_giorgio_init(uint16_t param) {
     {.msg = {{FCA_GIORGIO_EPS_3, 0, 4, 100U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true, .max_counter = 0U}, { 0 }, { 0 }}},
   };
   
-  UNUSED(param);
+  SAFETY_UNUSED(param);
 
   gen_crc_lookup_table_8(0x2F, fca_giorgio_crc8_lut_j1850);
   return BUILD_SAFETY_CFG(fca_giorgio_rx_checks, FCA_GIORGIO_TX_MSGS);
