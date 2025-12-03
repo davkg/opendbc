@@ -4,10 +4,10 @@ import unittest
 from opendbc.car.structs import CarParams
 from opendbc.safety.tests.libsafety import libsafety_py
 import opendbc.safety.tests.common as common
-from opendbc.safety.tests.common import CANPackerPanda
+from opendbc.safety.tests.common import CANPackerSafety
 
 
-class TestFcaGiorgio_Safety(common.PandaCarSafetyTest, common.DriverTorqueSteeringSafetyTest):
+class TestFcaGiorgio_Safety(common.CarSafetyTest, common.DriverTorqueSteeringSafetyTest):
   TX_MSGS = [[0x1F6, 0], [0x4AE, 0], [0x547, 0], [0x2FA, 0]]
   STANDSTILL_THRESHOLD = 0
   RELAY_MALFUNCTION_ADDRS = {0: (0x1F6,)}
@@ -24,7 +24,7 @@ class TestFcaGiorgio_Safety(common.PandaCarSafetyTest, common.DriverTorqueSteeri
   DRIVER_TORQUE_FACTOR = 3
 
   def setUp(self):
-    self.packer = CANPackerPanda("fca_giorgio")
+    self.packer = CANPackerSafety("fca_giorgio")
     self.safety = libsafety_py.libsafety
     self.safety.set_safety_hooks(CarParams.SafetyModel.fcaGiorgio, 0)
     self.safety.init_tests()
@@ -34,27 +34,27 @@ class TestFcaGiorgio_Safety(common.PandaCarSafetyTest, common.DriverTorqueSteeri
 
   def _pcm_status_msg(self, enable):
     values = {"CRUISE_STATUS": 2 if enable else 1}
-    return self.packer.make_can_msg_panda("ACC_1", 0, values)
+    return self.packer.make_can_msg_safety("ACC_1", 0, values)
 
   def _speed_msg(self, speed):
     values = {"WHEEL_SPEED_%s" % s: speed for s in ["FL", "FR", "RL", "RR"]}
-    return self.packer.make_can_msg_panda("ABS_1", 0, values)
+    return self.packer.make_can_msg_safety("ABS_1", 0, values)
 
   def _user_brake_msg(self, brake):
     values = {"BRAKE_PEDAL_SWITCH": 1 if brake else 0}
-    return self.packer.make_can_msg_panda("ABS_3", 0, values)
+    return self.packer.make_can_msg_safety("ABS_3", 0, values)
 
   def _torque_meas_msg(self, torque):
     values = {"EPS_TORQUE": torque}
-    return self.packer.make_can_msg_panda("EPS_3", 0, values)
+    return self.packer.make_can_msg_safety("EPS_3", 0, values)
 
   def _torque_cmd_msg(self, torque, steer_req=1):
     values = {"LKA_TORQUE": torque, "LKA_ACTIVE": steer_req}
-    return self.packer.make_can_msg_panda("LKA_COMMAND", 0, values)
+    return self.packer.make_can_msg_safety("LKA_COMMAND", 0, values)
 
   def _button_cmd_msg(self, cancel, steer_req=1):
     values = {"SET_SPEED": 2, "CANCEL_OR_RADAR": cancel}
-    return self.packer.make_can_msg_panda("ACC_BUTTON", 0, values)
+    return self.packer.make_can_msg_safety("ACC_BUTTON", 0, values)
 
   def test_rx_hook(self):
     for count in range(20):
