@@ -261,7 +261,7 @@ class TestFwFingerprintTiming:
 
   @pytest.mark.skip(reason="skipping this test for now")
   def test_fw_query_timing(self, subtests, mocker):
-    total_ref_time = {1: 7.3, 2: 7.9}
+    total_ref_time = {1: 7.4, 2: 8.0}
     brand_ref_times = {
       1: {
         'gm': 1.0,
@@ -278,6 +278,7 @@ class TestFwFingerprintTiming:
         'toyota': 0.7,
         'volkswagen': 0.65,
         'rivian': 0.3,
+        'psa': 0.1,
       },
       2: {
         'ford': 1.6,
