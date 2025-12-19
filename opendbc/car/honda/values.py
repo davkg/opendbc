@@ -32,7 +32,7 @@ class CarControllerParams:
   BOSCH_ACCEL_MIN = -3.5  # m/s^2
   BOSCH_ACCEL_MAX = 2.0  # m/s^2
 
-  BOSCH_GAS_LOOKUP_BP = [-0.2, 2.0]  # 2m/s^2
+  BOSCH_GAS_LOOKUP_BP = [0.0, 2.0]  # 2m/s^2
   BOSCH_GAS_LOOKUP_V = [0, 1600]
 
   STEER_STEP = 1  # 100 Hz
@@ -78,6 +78,7 @@ class HondaFlags(IntFlag):
   BOSCH_ALT_RADAR = 512
   ALLOW_MANUAL_TRANS = 1024
   HYBRID = 2048
+  BOSCH_TJA_CONTROL = 4096
 
 
 # Car button codes
@@ -271,7 +272,13 @@ class CAR(Platforms):
   )
   HONDA_PASSPORT_4G = HondaBoschCANFDPlatformConfig(
     [HondaCarDocs("Honda Passport 2026", "All")],
-    CarSpecs(mass=4705 * CV.LB_TO_KG, wheelbase=2.89, centerToFrontRatio=0.428, steerRatio=15.6, tireStiffnessFactor=0.444),  # as spec
+    CarSpecs(mass=4620 * CV.LB_TO_KG, wheelbase=2.89, centerToFrontRatio=0.442, steerRatio=18.5),
+  )
+  ACURA_MDX_4G = HondaBoschPlatformConfig(
+    [HondaCarDocs("Acura MDX 2022-24", "All"),],
+    CarSpecs(mass=4788 * CV.LB_TO_KG, wheelbase=2.89, steerRatio=16.3, centerToFrontRatio=0.428),  # as spec
+    {Bus.pt: 'acura_mdx_2022_can_generated'},
+    flags=HondaFlags.BOSCH_TJA_CONTROL,
   )
   # mid-model refresh
   ACURA_MDX_4G_MMR = HondaBoschCANFDPlatformConfig(
@@ -438,6 +445,7 @@ HONDA_BOSCH = CAR.with_flags(HondaFlags.BOSCH)
 HONDA_BOSCH_RADARLESS = CAR.with_flags(HondaFlags.BOSCH_RADARLESS)
 HONDA_BOSCH_CANFD = CAR.with_flags(HondaFlags.BOSCH_CANFD)
 HONDA_BOSCH_ALT_RADAR = CAR.with_flags(HondaFlags.BOSCH_ALT_RADAR)
+HONDA_BOSCH_TJA_CONTROL = CAR.with_flags(HondaFlags.BOSCH_TJA_CONTROL)
 
 
 DBC = CAR.create_dbc_map()
@@ -449,6 +457,7 @@ STEER_THRESHOLD = {
   CAR.HONDA_CRV_EU: 400,
   CAR.HONDA_ACCORD_11G: 600,
   CAR.HONDA_PILOT_4G: 600,
+  CAR.HONDA_PASSPORT_4G: 600,
   CAR.ACURA_MDX_4G_MMR: 600,
   CAR.HONDA_CRV_6G: 600,
   CAR.HONDA_CITY_7G: 600,
