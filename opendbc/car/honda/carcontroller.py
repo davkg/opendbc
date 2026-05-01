@@ -240,6 +240,7 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
         can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, CruiseButtons.RES_ACCEL, self.CP.carFingerprint))
 
     else:
+      # Keep stock ACC synced for radarless since ACC signals are forwarded
       if pcm_cancel_cmd and self.CP.carFingerprint in HONDA_BOSCH_RADARLESS:
         can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, CruiseButtons.CANCEL, self.CP.carFingerprint))
 
@@ -330,8 +331,11 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
         if (accel >= 0.01) and (CS.out.vEgo < 4.0) and (pcm_speed < 25.0 / 3.6):
           pcm_speed = 25.0 / 3.6
 
-      # TODO: make conditional for HONDA_BOSCH_RADARLESS
-      if self.CP.openpilotLongitudinalControl and CC.enabled:
+      # HONDA_BOSCH_RADARLESS forwards stock ACC signals when disengaged, so only send acc_hud when enabled
+      # Conflicting with the stock HUD signal causes flickering in the display
+      if (self.CP.openpilotLongitudinalControl and
+          (self.CP.carFingerprint not in HONDA_BOSCH_RADARLESS
+           or (self.CP.carFingerprint in HONDA_BOSCH_RADARLESS and CC.enabled))):
         # On Nidec, this also controls longitudinal positive acceleration
         can_sends.append(hondacan.create_acc_hud(self.packer, self.CAN.pt, self.CP, CC.enabled, pcm_speed, pcm_accel,
                                                  hud_control, hud_v_cruise, CS.is_metric, CS.acc_hud, speed_control))
