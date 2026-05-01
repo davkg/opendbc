@@ -240,6 +240,10 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
         can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, CruiseButtons.RES_ACCEL, self.CP.carFingerprint))
 
     else:
+      # Keep stock ACC synced for Radarless since ACC signals are forwarded when disengaged.
+      if not CC.enabled and CS.out.cruiseState.enabled and self.CP.carFingerprint in HONDA_BOSCH_RADARLESS:
+        can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, CruiseButtons.CANCEL, self.CP.carFingerprint))
+
       # Send gas and brake commands.
       if self.frame % 2 == 0:
         ts = self.frame * DT_CTRL
@@ -292,8 +296,10 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
 
           stopping = actuators.longControlState == LongCtrlState.stopping
           self.stopping_counter = self.stopping_counter + 1 if stopping else 0
-          can_sends.extend(hondacan.create_acc_commands(self.packer, self.CAN, CC.enabled, CC.longActive, self.accel, self.gas,
-                                                        self.stopping_counter, self.CP.carFingerprint, gas_pedal_force))
+          # For radarless, panda forwards stock gas/brake when disengaged, so only send when engaged
+          if self.CP.carFingerprint not in HONDA_BOSCH_RADARLESS or CC.enabled:
+            can_sends.extend(hondacan.create_acc_commands(self.packer, self.CAN, CC.enabled, CC.longActive, self.accel, self.gas,
+                                                          self.stopping_counter, self.CP.carFingerprint, gas_pedal_force))
         else:
           apply_brake = np.clip(self.brake_last - wind_brake, 0.0, 1.0)
           apply_brake = int(np.clip(apply_brake * self.params.NIDEC_BRAKE_MAX, 0, self.params.NIDEC_BRAKE_MAX - 1))
@@ -327,7 +333,11 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
         if (accel >= 0.01) and (CS.out.vEgo < 4.0) and (pcm_speed < 25.0 / 3.6):
           pcm_speed = 25.0 / 3.6
 
-      if self.CP.openpilotLongitudinalControl:
+      # HONDA_BOSCH_RADARLESS forwards stock ACC signals when disengaged, so only send acc_hud when enabled
+      # Conflicting with the stock HUD signal causes flickering in the display
+      if (self.CP.openpilotLongitudinalControl and
+          (self.CP.carFingerprint not in HONDA_BOSCH_RADARLESS
+           or (self.CP.carFingerprint in HONDA_BOSCH_RADARLESS and CC.enabled))):
         # On Nidec, this also controls longitudinal positive acceleration
         can_sends.append(hondacan.create_acc_hud(self.packer, self.CAN.pt, self.CP, CC.enabled, pcm_speed, pcm_accel,
                                                  hud_control, hud_v_cruise, CS.is_metric, CS.acc_hud, speed_control))

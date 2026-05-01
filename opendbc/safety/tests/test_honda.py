@@ -631,7 +631,7 @@ class TestHondaBoschRadarlessLongSafety(common.LongitudinalAccelSafetyTest, Hond
   """
     Covers the Honda Bosch Radarless safety mode with longitudinal control
   """
-  TX_MSGS = [[0xE4, 0], [0x33D, 0], [0x1C8, 0], [0x30C, 0]]
+  TX_MSGS = [[0xE4, 0], [0x296, 2], [0x33D, 0], [0x1C8, 0], [0x30C, 0]]
   FWD_BLACKLISTED_ADDRS = {2: [0xE4, 0x33D, 0x1C8, 0x30C]}
   RELAY_MALFUNCTION_ADDRS = {0: (0xE4, 0x1C8, 0x30C, 0x33D)}
 
@@ -649,6 +649,19 @@ class TestHondaBoschRadarlessLongSafety(common.LongitudinalAccelSafetyTest, Hond
   # Longitudinal doesn't need to send buttons
   def test_spam_cancel_safety_check(self):
     pass
+
+  def test_fwd_hook(self):
+    # 0x1C8 and 0x30C are conditionally blocked by the Bosch radarless fwd hook
+    # only when controls are allowed. Verify both states.
+    # controls not allowed -> should forward (not blacklisted)
+    self.safety.set_controls_allowed(False)
+    self.FWD_BLACKLISTED_ADDRS = {2: [0xE4, 0x33D]}
+    super().test_fwd_hook()
+
+    # controls allowed -> should be blocked
+    self.safety.set_controls_allowed(True)
+    self.FWD_BLACKLISTED_ADDRS = {2: [0xE4, 0x33D, 0x1C8, 0x30C]}
+    super().test_fwd_hook()
 
 
 class TestHondaBoschCANFDSafetyBase(TestHondaBoschSafetyBase):
