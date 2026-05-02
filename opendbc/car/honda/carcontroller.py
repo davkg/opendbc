@@ -5,7 +5,7 @@ from openpilot.common.params import Params
 from opendbc.can import CANPacker
 from opendbc.car import ACCELERATION_DUE_TO_GRAVITY, Bus, DT_CTRL, rate_limit, make_tester_present_msg, structs
 from opendbc.car.honda import hondacan
-from opendbc.car.honda.values import CAR, CruiseButtons, HONDA_BOSCH, HONDA_BOSCH_CANFD, HONDA_BOSCH_RADARLESS, \
+from opendbc.car.honda.values import CAR, CruiseButtons, CruiseSettings, HONDA_BOSCH, HONDA_BOSCH_CANFD, HONDA_BOSCH_RADARLESS, \
                                      HONDA_BOSCH_TJA_CONTROL, HONDA_NIDEC_ALT_PCM_ACCEL, CarControllerParams
 from opendbc.car.interfaces import CarControllerBase
 from opendbc.car.common.pid import PIDController
@@ -358,9 +358,26 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
           if not self.CP_SP.enableGasInterceptor:
             self.gas = pcm_accel / self.params.NIDEC_GAS_MAX
 
+    cruise_setting = 0
+
+    if self.CP.carFingerprint in HONDA_BOSCH_RADARLESS:
+      # Disable stock LKAS when active as it causes ACC to deactivate (touch steering wheel nag?)
+      if (CC.enabled and
+          CS.lkas_ready and
+          self.lkas_button_send_remaining == 0 and
+          self.frame >= self.last_lkas_button_frame + 100): # Wait 100 frames for HUD to update
+        self.lkas_button_send_remaining = 5
+
+      if self.lkas_button_send_remaining > 0:
+        self.last_lkas_button_frame = self.frame
+        self.lkas_button_send_remaining -= 1
+        cruise_setting = CruiseSettings.LKAS
+        can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, 0, cruise_setting, self.CP.carFingerprint))
+
     # Intelligent Cruise Button Management
-    can_sends.extend(IntelligentCruiseButtonManagementInterface.update(self, CC_SP, self.packer, self.frame,
-                                                                       self.last_button_frame, self.CAN))
+    if not cruise_setting:
+      can_sends.extend(IntelligentCruiseButtonManagementInterface.update(self, CC_SP, self.packer, self.frame,
+                                                                         self.last_button_frame, self.CAN))
 
     new_actuators = actuators.as_builder()
     new_actuators.speed = self.speed
