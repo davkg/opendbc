@@ -58,6 +58,8 @@ class CarState(CarStateBase, CarStateExt):
     self.initial_accFault_cleared = False
     self.initial_accFault_cleared_timer = int(10 / DT_CTRL) # 10 seconds after startup for initial faults to clear
 
+    self.lkas_ready = False
+
   def update(self, can_parsers) -> tuple[structs.CarState, structs.CarStateSP]:
     cp = can_parsers[Bus.pt]
     cp_cam = can_parsers[Bus.cam]
@@ -83,6 +85,9 @@ class CarState(CarStateBase, CarStateExt):
     self.v_cruise_factor = CV.MPH_TO_MS if self.dynamic_v_cruise_units and not self.is_metric else CV.KPH_TO_MS
 
     # ******************* parse out can *******************
+
+    if self.CP.carFingerprint in HONDA_BOSCH_RADARLESS:
+      self.lkas_ready = bool(cp_cam.vl["LKAS_HUD"]["LKAS_READY"])
 
     # blend in transmission speed at low speed, since it has more low speed accuracy
     # STANDSTILL->WHEELS_MOVING bit can be noisy around zero, so use XMISSION_SPEED
