@@ -126,6 +126,9 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
     self.windfactor_before_maxgas = self.windfactor_before_brake = self.windfactor
     self.pitch = 0.0
 
+    self.lkas_button_send_remaining = 0
+    self.last_lkas_button_frame = 0
+
     # Bosch extra-brake controller
     self.brake_pid = PIDController(k_p=([0,], [0,]),
                                    k_i=([0.], [0.5]),
@@ -372,7 +375,7 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
         self.last_lkas_button_frame = self.frame
         self.lkas_button_send_remaining -= 1
         cruise_setting = CruiseSettings.LKAS
-        can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, 0, cruise_setting, self.CP.carFingerprint))
+        can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, 0, self.CP.carFingerprint, cruise_setting))
 
     # Intelligent Cruise Button Management
     if not cruise_setting:
