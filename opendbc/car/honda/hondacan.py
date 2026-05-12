@@ -226,6 +226,35 @@ def create_legacy_brake_command(packer, bus):
   return packer.make_can_msg("LEGACY_BRAKE_COMMAND", bus, {})
 
 
+def create_speed_limit_dash_display(packer, bus, speed_limit_ms):
+  if speed_limit_ms <= 0:
+    speed_limit = 0xFF
+  else:
+    speed_limit = min(round(speed_limit_ms * CV.MS_TO_MPH / 5) * 5, 254)
+  return packer.make_can_msg("SPEED_LIMIT_DASH_DISPLAY", bus, {"SPEED_LIMIT": speed_limit})
+
+
+def create_camera_messages(packer, bus, camera_messages, speed_limit_ms):
+  speed_mph = speed_limit_ms * CV.MS_TO_MPH if speed_limit_ms > 0 else 0
+  if speed_mph <= 0:
+    speed_limit_sign = 125  # SPEED_LIMIT_NA
+  else:
+    rounded = max(5, min(85, round(speed_mph / 5) * 5))
+    speed_limit_sign = 96 + (rounded // 5)
+  values = {
+    "ZEROS_BOH": camera_messages.get("ZEROS_BOH", 0),
+    "SPEED_LIMIT_SIGN": speed_limit_sign,
+    "ROAD_SIGN": camera_messages.get("ROAD_SIGN", 0),
+    "BOH_1": camera_messages.get("BOH_1", 0),
+    "BOH_2": camera_messages.get("BOH_2", 0),
+    "ZEROS_BOH_2": camera_messages.get("ZEROS_BOH_2", 0),
+    "HIGHBEAMS_ON": camera_messages.get("HIGHBEAMS_ON", 0),
+    "AUTO_HIGHBEAMS_ACTIVE": camera_messages.get("AUTO_HIGHBEAMS_ACTIVE", 0),
+    "BOH_3": camera_messages.get("BOH_3", 0),
+  }
+  return packer.make_can_msg("CAMERA_MESSAGES", bus, values)
+
+
 def spam_buttons_command(packer, CAN, button_val, car_fingerprint, cruise_setting=0):
   values = {
     'CRUISE_BUTTONS': button_val,

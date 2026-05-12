@@ -595,9 +595,9 @@ class TestHondaBoschRadarlessSafetyBase(TestHondaBoschSafetyBase):
   STEER_BUS = 0
   BUTTONS_BUS = 2  # camera controls ACC, need to send buttons on bus 2
 
-  TX_MSGS = [[0xE4, 0], [0x296, 2], [0x33D, 0]]
-  FWD_BLACKLISTED_ADDRS = {2: [0xE4, 0x33D]}
-  RELAY_MALFUNCTION_ADDRS = {0: (0xE4, 0x33D)}  # STEERING_CONTROL
+  TX_MSGS = [[0xE4, 0], [0x296, 2], [0x33D, 0], [0x1EF, 0], [0x35E, 0]]
+  FWD_BLACKLISTED_ADDRS = {2: [0xE4, 0x33D, 0x1EF, 0x35E]}
+  RELAY_MALFUNCTION_ADDRS = {0: (0xE4, 0x33D, 0x1EF, 0x35E)}  # STEERING_CONTROL, SPEED_LIMIT_DASH_DISPLAY, CAMERA_MESSAGES
 
   def setUp(self):
     self.packer = CANPackerSafety("honda_bosch_radarless_generated")
@@ -631,9 +631,9 @@ class TestHondaBoschRadarlessLongSafety(common.LongitudinalAccelSafetyTest, Hond
   """
     Covers the Honda Bosch Radarless safety mode with longitudinal control
   """
-  TX_MSGS = [[0xE4, 0], [0x296, 2], [0x33D, 0], [0x1C8, 0], [0x30C, 0]]
-  FWD_BLACKLISTED_ADDRS = {2: [0xE4, 0x33D, 0x1C8, 0x30C]}
-  RELAY_MALFUNCTION_ADDRS = {0: (0xE4, 0x1C8, 0x30C, 0x33D)}
+  TX_MSGS = [[0xE4, 0], [0x296, 2], [0x33D, 0], [0x1C8, 0], [0x30C, 0], [0x1EF, 0], [0x35E, 0]]
+  FWD_BLACKLISTED_ADDRS = {2: [0xE4, 0x33D, 0x1C8, 0x30C, 0x1EF, 0x35E]}
+  RELAY_MALFUNCTION_ADDRS = {0: (0xE4, 0x1C8, 0x30C, 0x33D, 0x1EF, 0x35E)}
 
   def setUp(self):
     super().setUp()
@@ -655,12 +655,12 @@ class TestHondaBoschRadarlessLongSafety(common.LongitudinalAccelSafetyTest, Hond
     # only when controls are allowed. Verify both states.
     # controls not allowed -> should forward (not blacklisted)
     self.safety.set_controls_allowed(False)
-    self.FWD_BLACKLISTED_ADDRS = {2: [0xE4, 0x33D]}
+    self.FWD_BLACKLISTED_ADDRS = {2: [0xE4, 0x33D, 0x1EF, 0x35E]}
     super().test_fwd_hook()
 
     # controls allowed -> should be blocked
     self.safety.set_controls_allowed(True)
-    self.FWD_BLACKLISTED_ADDRS = {2: [0xE4, 0x33D, 0x1C8, 0x30C]}
+    self.FWD_BLACKLISTED_ADDRS = {2: [0xE4, 0x33D, 0x1C8, 0x30C, 0x1EF, 0x35E]}
     super().test_fwd_hook()
 
 

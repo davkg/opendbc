@@ -381,6 +381,12 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
     #     cruise_setting = CruiseSettings.LKAS
     #     can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, 0, self.CP.carFingerprint, cruise_setting))
 
+    if self.frame % 2 == 0 and self.CP.carFingerprint in HONDA_BOSCH_RADARLESS:
+      can_sends.append(hondacan.create_speed_limit_dash_display(self.packer, self.CAN.pt, CC_SP.speedLimit))
+
+    if self.frame % 10 == 0 and self.CP.carFingerprint in HONDA_BOSCH_RADARLESS:
+      can_sends.append(hondacan.create_camera_messages(self.packer, self.CAN.pt, CS.camera_messages, CC_SP.speedLimit))
+
     # Intelligent Cruise Button Management
     if not cruise_setting:
       can_sends.extend(IntelligentCruiseButtonManagementInterface.update(self, CC_SP, self.packer, self.frame,
