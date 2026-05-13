@@ -17,6 +17,8 @@ from opendbc.sunnypilot.car.honda.icbm import IntelligentCruiseButtonManagementI
 VisualAlert = structs.CarControl.HUDControl.VisualAlert
 LongCtrlState = structs.CarControl.Actuators.LongControlState
 
+# temporary for ruff stylecheck
+assert CruiseSettings
 
 def compute_gb_honda_bosch(accel, speed):
   # TODO returns 0s, is unused
@@ -365,19 +367,19 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
 
     cruise_setting = 0
 
-    if self.CP.carFingerprint in HONDA_BOSCH_RADARLESS:
-      # Disable stock LKAS when active as it causes ACC to deactivate (touch steering wheel nag?)
-      if (CC.enabled and
-          CS.lkas_ready and
-          self.lkas_button_send_remaining == 0 and
-          self.frame >= self.last_lkas_button_frame + 100): # Wait 100 frames for HUD to update
-        self.lkas_button_send_remaining = 5
+    # if self.CP.carFingerprint in HONDA_BOSCH_RADARLESS:
+    #   # Disable stock LKAS when active as it causes ACC to deactivate (touch steering wheel nag?)
+    #   if (CC.enabled and
+    #       CS.lkas_ready and
+    #       self.lkas_button_send_remaining == 0 and
+    #       self.frame >= self.last_lkas_button_frame + 100): # Wait 100 frames for HUD to update
+    #     self.lkas_button_send_remaining = 5
 
-      if self.lkas_button_send_remaining > 0:
-        self.last_lkas_button_frame = self.frame
-        self.lkas_button_send_remaining -= 1
-        cruise_setting = CruiseSettings.LKAS
-        can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, 0, self.CP.carFingerprint, cruise_setting))
+    #   if self.lkas_button_send_remaining > 0:
+    #     self.last_lkas_button_frame = self.frame
+    #     self.lkas_button_send_remaining -= 1
+    #     cruise_setting = CruiseSettings.LKAS
+    #     can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, 0, self.CP.carFingerprint, cruise_setting))
 
     # Intelligent Cruise Button Management
     if not cruise_setting:
