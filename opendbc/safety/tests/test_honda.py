@@ -651,14 +651,14 @@ class TestHondaBoschRadarlessLongSafety(common.LongitudinalAccelSafetyTest, Hond
     pass
 
   def test_fwd_hook(self):
-    # 0x1C8 and 0x30C are conditionally blocked by the Bosch radarless fwd hook
-    # only when controls are allowed. Verify both states.
-    # controls not allowed -> should forward (not blacklisted)
+    # 0x1C8 is conditionally blocked by the Bosch radarless fwd hook only when controls are allowed.
+    # 0x30C is always blocked: OP owns ACC_HUD unconditionally for radarless long (no disable_static_blocking).
+    # controls not allowed -> 0x1C8 should forward, 0x30C still blocked
     self.safety.set_controls_allowed(False)
-    self.FWD_BLACKLISTED_ADDRS = {2: [0xE4, 0x33D, 0x1EF, 0x35E]}
+    self.FWD_BLACKLISTED_ADDRS = {2: [0xE4, 0x33D, 0x30C, 0x1EF, 0x35E]}
     super().test_fwd_hook()
 
-    # controls allowed -> should be blocked
+    # controls allowed -> both 0x1C8 and 0x30C should be blocked
     self.safety.set_controls_allowed(True)
     self.FWD_BLACKLISTED_ADDRS = {2: [0xE4, 0x33D, 0x1C8, 0x30C, 0x1EF, 0x35E]}
     super().test_fwd_hook()

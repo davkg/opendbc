@@ -251,6 +251,7 @@ class CarState(CarStateBase, CarStateExt):
     if self.CP.carFingerprint in (HONDA_BOSCH_RADARLESS | HONDA_BOSCH_CANFD):
       self.lkas_hud = cp_cam.vl["LKAS_HUD"]
     if self.CP.carFingerprint in HONDA_BOSCH_RADARLESS:
+      self.acc_hud = cp_cam.vl["ACC_HUD"]
       self.camera_messages = cp_cam.vl["CAMERA_MESSAGES"]
 
     if self.CP.enableBsm:

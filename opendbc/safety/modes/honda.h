@@ -239,7 +239,7 @@ static bool honda_tx_hook(const CANPacket_t *msg) {
   unsigned int bus_buttons = (honda_bosch_radarless) ? 2U : bus_pt;  // the camera controls ACC on radarless Bosch cars
 
   // ACC_HUD: safety check (nidec w/o pedal)
-  if ((msg->addr == 0x30CU) && (msg->bus == bus_pt)) {
+  if ((msg->addr == 0x30CU) && (msg->bus == bus_pt) && !honda_bosch_radarless) {
     int pcm_speed = (msg->data[0] << 8) | msg->data[1];
     int pcm_gas = msg->data[2];
 
@@ -429,7 +429,7 @@ static safety_config honda_bosch_init(uint16_t param) {
 
   static CanMsg HONDA_RADARLESS_LONG_TX_MSGS[] = {{0xE4, 0, 5, .check_relay = true}, {0x296, 2, 4, .check_relay = false}, {0x33D, 0, 8, .check_relay = true}, {0x1EF, 0, 8, .check_relay = true},
                                                   {0x35E, 0, 8, .check_relay = true},
-                                                  {0x1C8, 0, 8, .check_relay = true, .disable_static_blocking = true}, {0x30C, 0, 8, .check_relay = true, .disable_static_blocking = true}};  // Bosch radarless w/ gas and brakes
+                                                  {0x1C8, 0, 8, .check_relay = true, .disable_static_blocking = true}, {0x30C, 0, 8, .check_relay = true}};  // Bosch radarless w/ gas and brakes
 
   static CanMsg HONDA_CANFD_TX_MSGS[] = {{0xE4, 0, 5, .check_relay = true}, {0x296, 0, 4, .check_relay = false}, {0x33D, 0, 8, .check_relay = true}}; // Bosch CANFD
 
@@ -515,7 +515,7 @@ static bool honda_bosch_fwd_hook(int bus_num, int addr) {
   bool block_msg = false;
   // Forward long controls (including AEB) when OP is disengaged
   if (honda_bosch_radarless && honda_bosch_long && (bus_num == 2)) {
-    if ((addr == 0x1C8) || (addr == 0x30C)) {
+    if (addr == 0x1C8) {
       block_msg = controls_allowed;
     }
   }

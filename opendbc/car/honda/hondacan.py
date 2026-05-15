@@ -172,6 +172,16 @@ def create_acc_hud(packer, bus, CP, enabled, pcm_speed, pcm_accel, hud_control, 
   return packer.make_can_msg("ACC_HUD", bus, acc_hud_values)
 
 
+def create_acc_hud_forwarded(packer, bus, acc_hud, hud_v_cruise, hud_control, is_metric):
+  # Forward all stock ACC_HUD signals from the camera but show OP's set speed.
+  # HUD_DISTANCE and IMPERIAL_UNIT are set by OP rather than copied from stock.
+  acc_hud_values = {k: v for k, v in acc_hud.items() if k not in ('COUNTER', 'CHECKSUM')}
+  acc_hud_values['CRUISE_SPEED'] = hud_v_cruise
+  acc_hud_values['HUD_DISTANCE'] = hud_control.leadDistanceBars
+  acc_hud_values['IMPERIAL_UNIT'] = int(not is_metric)
+  return packer.make_can_msg("ACC_HUD", bus, acc_hud_values)
+
+
 def create_lkas_hud(packer, bus, CP, hud_control, lat_active, steering_available, reduced_steering, alert_steer_required, lkas_hud, dashed_lanes,
                     steer_maxed):
   commands = []
