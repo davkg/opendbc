@@ -144,7 +144,7 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
     gas_pedal_force = 0.0
     actuators = CC.actuators
     hud_control = CC.hudControl
-    hud_v_cruise = hud_control.setSpeed / CS.v_cruise_factor if hud_control.speedVisible else 255
+    hud_v_cruise = hud_control.setSpeed / CS.v_cruise_factor if hud_control.setSpeed > 0 else 255
     pcm_cancel_cmd = CC.cruiseControl.cancel
 
     if len(CC.orientationNED) == 3:
