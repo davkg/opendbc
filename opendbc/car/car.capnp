@@ -374,6 +374,8 @@ struct CarControl {
     brake @1: Float32; # [0.0, 1.0]
     torqueOutputCan @8: Float32;   # value sent over can to the car
     speed @6: Float32;  # m/s
+    gasFactor @9: Float32;   # Honda Bosch learned gas pedal multiplier
+    windFactor @10: Float32; # Honda Bosch learned aerodynamic drag multiplier
 
     enum LongControlState @0xe40f3a917d908282{
       off @0;
