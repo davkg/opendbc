@@ -19,9 +19,50 @@ BO_ 456 ACC_CONTROL: 8 XXX
  SG_ CHECKSUM : 59|4@0+ (1,0) [0|15] "" XXX
  SG_ COUNTER : 61|2@0+ (1,0) [0|3] "" XXX
 
-BO_ 457 ACC_VISION_HUD: 8 XXX
- SG_ LEAD_DISTANCE : 8|8@1+ (1,0) [0|255] "" XXX
- SG_ LEAD_DISTANCE_RELATED : 24|8@1+ (1,0) [0|255] "" XXX
+BO_ 457 CAMERA_LEAD: 8 CAM
+ SG_ NEW_SIGNAL_2 : 0|4@1+ (1,0) [0|15] "" XXX
+ SG_ NEW_SIGNAL_1 : 4|4@1+ (1,0) [0|15] "" XXX
+ SG_ LEAD_DISTANCE : 15|16@0+ (1,0) [0|65535] "" XXX
+ SG_ CAR_SPEED : 31|16@0+ (0.03124,0) [0|65535] "kph" XXX
+ SG_ CHECKSUM : 59|4@0+ (1,0) [0|15] "" XXX
+ SG_ COUNTER : 61|2@0+ (1,0) [0|3] "" XXX
+
+BO_ 114120023 CAMERA_OBJECT_TRACKS: 8 CAM
+ SG_ TRACK_INDEX M : 7|6@0+ (1,0) [0|63] "" XXX
+ SG_ T1_OBJECT_ID m1 : 15|5@0+ (1,0) [0|31] "" XXX
+ SG_ T1_UNKNOWN_1 m1 : 23|4@0+ (1,0) [0|15] "" XXX
+ SG_ T1_LONG_DIST m1 : 39|10@0+ (0.1,0) [0|102.3] "m" XXX
+ SG_ T1_UNKNOWN_2 m1 : 43|4@0+ (1,0) [0|15] "" XXX
+ SG_ T1_LAT_DIST m1 : 55|8@0- (0.1,0) [-12.8|12.7] "m" XXX
+ SG_ T2_OBJECT_ID m2 : 15|5@0+ (1,0) [0|31] "" XXX
+ SG_ T2_LONG_DIST m2 : 39|10@0+ (0.1,0) [0|102.3] "m" XXX
+ SG_ T2_LAT_DIST m2 : 55|8@0- (0.1,0) [-12.8|12.7] "m" XXX
+ SG_ T3_OBJECT_ID m3 : 15|5@0+ (1,0) [0|31] "" XXX
+ SG_ T3_LONG_DIST m3 : 39|10@0+ (0.1,0) [0|102.3] "m" XXX
+ SG_ T3_LAT_DIST m3 : 55|8@0- (0.1,0) [-12.8|12.7] "m" XXX
+ SG_ T4_OBJECT_ID m4 : 15|5@0+ (1,0) [0|31] "" XXX
+ SG_ T4_LONG_DIST m4 : 39|10@0+ (0.1,0) [0|102.3] "m" XXX
+ SG_ T4_LAT_DIST m4 : 55|8@0- (0.1,0) [-12.8|12.7] "m" XXX
+ SG_ T5_OBJECT_ID m5 : 15|5@0+ (1,0) [0|31] "" XXX
+ SG_ T5_LONG_DIST m5 : 39|10@0+ (0.1,0) [0|102.3] "m" XXX
+ SG_ T5_LAT_DIST m5 : 55|8@0- (0.1,0) [-12.8|12.7] "m" XXX
+ SG_ T6_OBJECT_ID m6 : 15|5@0+ (1,0) [0|31] "" XXX
+ SG_ T6_LONG_DIST m6 : 39|10@0+ (0.1,0) [0|102.3] "m" XXX
+ SG_ T6_LAT_DIST m6 : 55|8@0- (0.1,0) [-12.8|12.7] "m" XXX
+ SG_ T7_OBJECT_ID m7 : 15|5@0+ (1,0) [0|31] "" XXX
+ SG_ T7_LONG_DIST m7 : 39|10@0+ (0.1,0) [0|102.3] "m" XXX
+ SG_ T7_LAT_DIST m7 : 55|8@0- (0.1,0) [-12.8|12.7] "m" XXX
+ SG_ T8_OBJECT_ID m8 : 15|5@0+ (1,0) [0|31] "" XXX
+ SG_ T8_LONG_DIST m8 : 39|10@0+ (0.1,0) [0|102.3] "m" XXX
+ SG_ T8_LAT_DIST m8 : 55|8@0- (0.1,0) [-12.8|12.7] "m" XXX
+ SG_ T9_OBJECT_ID m9 : 15|5@0+ (1,0) [0|31] "" XXX
+ SG_ T9_LONG_DIST m9 : 39|10@0+ (0.1,0) [0|102.3] "m" XXX
+ SG_ T9_LAT_DIST m9 : 55|8@0- (0.1,0) [-12.8|12.7] "m" XXX
+ SG_ T10_OBJECT_ID m10 : 15|5@0+ (1,0) [0|31] "" XXX
+ SG_ T10_LONG_DIST m10 : 39|10@0+ (0.1,0) [0|102.3] "m" XXX
+ SG_ T10_LAT_DIST m10 : 55|8@0- (0.1,0) [-12.8|12.7] "m" XXX
+ SG_ CHECKSUM : 59|4@0+ (1,0) [0|15] "" XXX
+ SG_ COUNTER : 61|2@0+ (1,0) [0|3] "" XXX
 
 BO_ 467 CRUISE_FAULT_STATUS: 8 XXX
  SG_ CRUISE_FAULT : 3|1@0+ (1,0) [0|1] "" XXX
@@ -50,6 +91,9 @@ BO_ 254913108 LKAS_HUD_2: 8 ADAS
 
 CM_ SG_ 456 IDLESTOP_ALLOW "allows car to turn off engine at a standstill";
 CM_ SG_ 456 STANDSTILL "set to 1 when camera requests -4.0 m/s^2";
+CM_ SG_ 457 CAR_SPEED "Ego speed, not lead speed";
 CM_ SG_ 495 SPEED_LIMIT "Defaults to 0xFF if no speed limit found";
+CM_ SG_ 114120023 TRACK_INDEX "1-10, 17-26, 33-42, 49-58 map to the same 10 objects for 5Hz frequency each";
+CM_ SG_ 114120023 T1_LAT_DIST "positive = left of ego";
 
 VAL_ 477 GEAR_MT 14 "reverse" 6 "6th" 5 "5th" 4 "4th" 3 "3rd" 2 "2nd" 1 "1st" 0 "Clutch";
