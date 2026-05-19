@@ -646,6 +646,17 @@ class TestHondaBoschRadarlessLongSafety(common.LongitudinalAccelSafetyTest, Hond
     }
     return self.packer.make_can_msg_safety("ACC_CONTROL", self.PT_BUS, values)
 
+  def test_accel_actuation_limits(self):
+    # Unlike the generic longitudinal test, radarless long blocks openpilot's
+    # ACC_CONTROL entirely when disengaged (the camera's ACC_CONTROL is forwarded
+    # in its place), so the inactive accel is rejected too when controls aren't allowed.
+    for accel in np.concatenate((np.arange(self.MIN_ACCEL - 1, self.MAX_ACCEL + 1, 0.05), [0, self.INACTIVE_ACCEL])):
+      accel = round(accel, 2)  # floats might not hit exact boundary conditions without rounding
+      for controls_allowed in [True, False]:
+        self.safety.set_controls_allowed(controls_allowed)
+        should_tx = controls_allowed and self.MIN_ACCEL <= accel <= self.MAX_ACCEL
+        self.assertEqual(should_tx, self._tx(self._accel_msg(accel)), (controls_allowed, accel))
+
   # Longitudinal doesn't need to send buttons
   def test_spam_cancel_safety_check(self):
     pass
@@ -660,6 +671,7 @@ class TestHondaBoschRadarlessLongSafety(common.LongitudinalAccelSafetyTest, Hond
 
     # controls allowed -> both 0x1C8 and 0x30C should be blocked
     self.safety.set_controls_allowed(True)
+    self._tx(self._accel_msg(0))  # Set the honda_acc_control_seen baton-handover flag
     self.FWD_BLACKLISTED_ADDRS = {2: [0xE4, 0x33D, 0x1C8, 0x30C, 0x1EF, 0x35E]}
     super().test_fwd_hook()
 

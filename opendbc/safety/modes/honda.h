@@ -43,6 +43,7 @@ static bool honda_fwd_brake = false;
 static bool honda_bosch_long = false;
 static bool honda_bosch_radarless = false;
 static bool honda_bosch_canfd = false;
+static bool honda_acc_control_seen = false;
 static bool honda_nidec_hybrid = false;
 typedef enum {HONDA_NIDEC, HONDA_BOSCH} HondaHw;
 static HondaHw honda_hw = HONDA_NIDEC;
@@ -214,6 +215,10 @@ static void honda_rx_hook(const CANPacket_t *msg) {
       }
     }
   }
+
+  if (!controls_allowed) {
+    honda_acc_control_seen = false;
+  }
 }
 
 static bool honda_tx_hook(const CANPacket_t *msg) {
@@ -290,8 +295,12 @@ static bool honda_tx_hook(const CANPacket_t *msg) {
 
     bool violation = false;
     violation |= longitudinal_accel_checks(accel, HONDA_BOSCH_LONG_LIMITS);
+    // 0x1C8 (ACC_CONTROL) is forwarded from the camera when disengaged
+    violation |= !controls_allowed;
     if (violation) {
       tx = false;
+    } else {
+      honda_acc_control_seen = true;
     }
   }
 
@@ -516,7 +525,7 @@ static bool honda_bosch_fwd_hook(int bus_num, int addr) {
   // Forward long controls (including AEB) when OP is disengaged
   if (honda_bosch_radarless && honda_bosch_long && (bus_num == 2)) {
     if (addr == 0x1C8) {
-      block_msg = controls_allowed;
+      block_msg = honda_acc_control_seen;
     }
   }
   return block_msg;
