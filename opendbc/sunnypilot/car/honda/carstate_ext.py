@@ -9,6 +9,7 @@ from enum import StrEnum
 from opendbc.car import Bus, structs
 from opendbc.can.parser import CANParser
 from opendbc.car.honda.values import (HONDA_BOSCH, HONDA_BOSCH_RADARLESS, HONDA_BOSCH_CANFD)
+from opendbc.sunnypilot.car.honda.camera_object_tracker import CameraObjectTracker
 from opendbc.sunnypilot.car.honda.values_ext import HondaFlagsSP
 from opendbc.car.common.conversions import Conversions as CV
 
@@ -17,6 +18,9 @@ class CarStateExt:
   def __init__(self, CP, CP_SP):
     self.CP = CP
     self.CP_SP = CP_SP
+    # Honda Bosch radarless camera publishes CAMERA_OBJECT_TRACKS — up to 10
+    # adjacent-vehicle tracks per cycle. Aggregate them for downstream consumers.
+    self.camera_object_tracker = CameraObjectTracker() if CP.carFingerprint in HONDA_BOSCH_RADARLESS else None
 
   def update(self, ret: structs.CarState, ret_sp: structs.CarStateSP, can_parsers: dict[StrEnum, CANParser]) -> None:
     cp = can_parsers[Bus.pt]
@@ -26,6 +30,9 @@ class CarStateExt:
       speed_bus = cp if (self.CP.carFingerprint in (HONDA_BOSCH - HONDA_BOSCH_RADARLESS - HONDA_BOSCH_CANFD)) else cp_cam
       speed_limit_raw = speed_bus.vl["CAMERA_MESSAGES"]["SPEED_LIMIT_SIGN"] % 32
       ret_sp.speedLimit = speed_limit_raw * 5.0 * CV.MPH_TO_MS if (1 <= speed_limit_raw <= 17) else 0.0
+
+    if self.camera_object_tracker is not None:
+      self.camera_object_tracker.update(cp_cam)
 
     if self.CP_SP.flags & HondaFlagsSP.NIDEC_HYBRID:
       ret.accFaulted = bool(cp.vl["HYBRID_BRAKE_ERROR"]["BRAKE_ERROR_1"] or cp.vl["HYBRID_BRAKE_ERROR"]["BRAKE_ERROR_2"])
