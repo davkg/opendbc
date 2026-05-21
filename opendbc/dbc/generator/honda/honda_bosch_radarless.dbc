@@ -31,35 +31,35 @@ BO_ 114120023 CAMERA_OBJECT_TRACKS: 8 CAM
  SG_ TRACK_INDEX M : 7|6@0+ (1,0) [0|63] "" XXX
  SG_ T1_OBJECT_ID m1 : 15|5@0+ (1,0) [0|31] "" XXX
  SG_ T1_UNKNOWN_1 m1 : 23|4@0+ (1,0) [0|15] "" XXX
- SG_ T1_LONG_DIST m1 : 39|10@0+ (0.1,0) [0|102.3] "m" XXX
+ SG_ T1_LONG_DIST m1 : 39|10@0+ (0.167,-10) [-10|160.841] "m" XXX
  SG_ T1_UNKNOWN_2 m1 : 43|4@0+ (1,0) [0|15] "" XXX
  SG_ T1_LAT_DIST m1 : 55|8@0- (0.1,0) [-12.8|12.7] "m" XXX
  SG_ T2_OBJECT_ID m2 : 15|5@0+ (1,0) [0|31] "" XXX
- SG_ T2_LONG_DIST m2 : 39|10@0+ (0.1,0) [0|102.3] "m" XXX
+ SG_ T2_LONG_DIST m2 : 39|10@0+ (0.167,-10) [-10|160.841] "m" XXX
  SG_ T2_LAT_DIST m2 : 55|8@0- (0.1,0) [-12.8|12.7] "m" XXX
  SG_ T3_OBJECT_ID m3 : 15|5@0+ (1,0) [0|31] "" XXX
- SG_ T3_LONG_DIST m3 : 39|10@0+ (0.1,0) [0|102.3] "m" XXX
+ SG_ T3_LONG_DIST m3 : 39|10@0+ (0.167,-10) [-10|160.841] "m" XXX
  SG_ T3_LAT_DIST m3 : 55|8@0- (0.1,0) [-12.8|12.7] "m" XXX
  SG_ T4_OBJECT_ID m4 : 15|5@0+ (1,0) [0|31] "" XXX
- SG_ T4_LONG_DIST m4 : 39|10@0+ (0.1,0) [0|102.3] "m" XXX
+ SG_ T4_LONG_DIST m4 : 39|10@0+ (0.167,-10) [-10|160.841] "m" XXX
  SG_ T4_LAT_DIST m4 : 55|8@0- (0.1,0) [-12.8|12.7] "m" XXX
  SG_ T5_OBJECT_ID m5 : 15|5@0+ (1,0) [0|31] "" XXX
- SG_ T5_LONG_DIST m5 : 39|10@0+ (0.1,0) [0|102.3] "m" XXX
+ SG_ T5_LONG_DIST m5 : 39|10@0+ (0.167,-10) [-10|160.841] "m" XXX
  SG_ T5_LAT_DIST m5 : 55|8@0- (0.1,0) [-12.8|12.7] "m" XXX
  SG_ T6_OBJECT_ID m6 : 15|5@0+ (1,0) [0|31] "" XXX
- SG_ T6_LONG_DIST m6 : 39|10@0+ (0.1,0) [0|102.3] "m" XXX
+ SG_ T6_LONG_DIST m6 : 39|10@0+ (0.167,-10) [-10|160.841] "m" XXX
  SG_ T6_LAT_DIST m6 : 55|8@0- (0.1,0) [-12.8|12.7] "m" XXX
  SG_ T7_OBJECT_ID m7 : 15|5@0+ (1,0) [0|31] "" XXX
- SG_ T7_LONG_DIST m7 : 39|10@0+ (0.1,0) [0|102.3] "m" XXX
+ SG_ T7_LONG_DIST m7 : 39|10@0+ (0.167,-10) [-10|160.841] "m" XXX
  SG_ T7_LAT_DIST m7 : 55|8@0- (0.1,0) [-12.8|12.7] "m" XXX
  SG_ T8_OBJECT_ID m8 : 15|5@0+ (1,0) [0|31] "" XXX
- SG_ T8_LONG_DIST m8 : 39|10@0+ (0.1,0) [0|102.3] "m" XXX
+ SG_ T8_LONG_DIST m8 : 39|10@0+ (0.167,-10) [-10|160.841] "m" XXX
  SG_ T8_LAT_DIST m8 : 55|8@0- (0.1,0) [-12.8|12.7] "m" XXX
  SG_ T9_OBJECT_ID m9 : 15|5@0+ (1,0) [0|31] "" XXX
- SG_ T9_LONG_DIST m9 : 39|10@0+ (0.1,0) [0|102.3] "m" XXX
+ SG_ T9_LONG_DIST m9 : 39|10@0+ (0.167,-10) [-10|160.841] "m" XXX
  SG_ T9_LAT_DIST m9 : 55|8@0- (0.1,0) [-12.8|12.7] "m" XXX
  SG_ T10_OBJECT_ID m10 : 15|5@0+ (1,0) [0|31] "" XXX
- SG_ T10_LONG_DIST m10 : 39|10@0+ (0.1,0) [0|102.3] "m" XXX
+ SG_ T10_LONG_DIST m10 : 39|10@0+ (0.167,-10) [-10|160.841] "m" XXX
  SG_ T10_LAT_DIST m10 : 55|8@0- (0.1,0) [-12.8|12.7] "m" XXX
  SG_ CHECKSUM_RAW : 59|4@0+ (1,0) [0|15] "" XXX
  SG_ COUNTER_RAW : 61|2@0+ (1,0) [0|3] "" XXX
