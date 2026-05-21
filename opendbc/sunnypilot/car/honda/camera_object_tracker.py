@@ -1,16 +1,20 @@
 """
 Aggregates the per-slot tracks from the Honda Bosch radarless camera's
-CAMERA_OBJECT_TRACKS message (id 0x6CD1C97 / 114120023) into a snapshot
+CAMERA_OBJECT_TRACKS message (id 0x6CD5557 / 114120023) into a snapshot
 the rest of the stack can consume.
 
 Message structure (reverse-engineered):
   TRACK_INDEX = (bank << 4) | slot, where slot ∈ 1..10 and bank ∈ 0..3.
   Each of the 10 object slots is transmitted 4× per cycle (~5 Hz/object),
-  with bank 0 (mux values 1..10) carrying the most recent values per slot.
+  spread across all four banks.
 
-For Phase 1+2 we read bank 0 only (~1.3 Hz per slot, sufficient for the
-onroad visualization with downstream smoothing). Bank expansion to all
-four banks is deferred until the planner needs the higher rate.
+opendbc's CANParser doesn't gate multiplexed signals by their mux value —
+T1..T10_OBJECT_ID (and the LONG_DIST / LAT_DIST families) all alias the
+same physical bits, so reading them via `cp.vl[...]["Tn_*"]` returns the
+same value 10 times. We instead iterate `cp.vl_all[...]` (the list of all
+frames since the last update), read `TRACK_INDEX` per frame, and dispatch
+each frame's data to the correct slot ourselves. This naturally covers
+all four banks for ~5 Hz/slot.
 """
 from dataclasses import dataclass
 
@@ -34,11 +38,9 @@ class CameraObjectTrack:
 
 
 class CameraObjectTracker:
-  """Stateless wrapper over CAMERA_OBJECT_TRACKS bank-0 signals.
-
-  Held as an attribute on the Honda CarState instance and updated once per
-  carstate tick. `snapshot()` returns the current 10-slot table; consumers
-  filter by `.valid`.
+  """Aggregator over CAMERA_OBJECT_TRACKS. Slot state persists across ticks;
+  each incoming frame updates exactly one slot (determined by TRACK_INDEX).
+  `snapshot()` returns the current 10-slot table; consumers filter by `.valid`.
   """
 
   def __init__(self):
@@ -48,20 +50,29 @@ class CameraObjectTracker:
     ]
 
   def update(self, cp_cam: CANParser) -> None:
-    msg = cp_cam.vl["CAMERA_OBJECT_TRACKS"]
-    for i in range(NUM_SLOTS):
-      n = i + 1  # signals are T1..T10
-      obj_id = int(msg[f"T{n}_OBJECT_ID"])
-      d_rel = float(msg[f"T{n}_LONG_DIST"])
-      y_rel = float(msg[f"T{n}_LAT_DIST"])
-      valid = obj_id != 0 and d_rel < LONG_DIST_CAP_M
-      self._tracks[i] = CameraObjectTrack(
-        slot=i,
-        object_id=obj_id,
-        d_rel=d_rel,
-        y_rel=y_rel,
-        valid=valid,
-      )
+    # Touch vl to ensure the message is registered with the parser; subsequent
+    # cp.update() calls will then populate vl_all for this address.
+    _ = cp_cam.vl["CAMERA_OBJECT_TRACKS"]
+    vla = cp_cam.vl_all["CAMERA_OBJECT_TRACKS"]
+
+    # T1..T10_* all alias the same bit positions (multiplex value is dropped by
+    # the DBC loader). Read any single Tn_* family.
+    indices = vla["TRACK_INDEX"]
+    obj_ids = vla["T1_OBJECT_ID"]
+    long_dists = vla["T1_LONG_DIST"]
+    lat_dists = vla["T1_LAT_DIST"]
+
+    for ti, oid, ld, yd in zip(indices, obj_ids, long_dists, lat_dists, strict=True):
+      slot = (int(ti) - 1) % 16  # TRACK_INDEX = (bank<<4)|slot, slot ∈ 1..10
+      if 0 <= slot < NUM_SLOTS:
+        valid = oid != 0 and ld < LONG_DIST_CAP_M
+        self._tracks[slot] = CameraObjectTrack(
+          slot=slot,
+          object_id=int(oid),
+          d_rel=float(ld),
+          y_rel=float(yd),
+          valid=valid,
+        )
 
   def snapshot(self) -> list[CameraObjectTrack]:
     return self._tracks
