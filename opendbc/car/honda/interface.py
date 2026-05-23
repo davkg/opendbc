@@ -91,6 +91,7 @@ class CarInterface(CarInterfaceBase):
       # longitudinal gas-only tuning for Bosch hondas is in carcontroller
       if candidate in HONDA_BOSCH_RADARLESS:
         ret.stopAccel = CarControllerParams.BOSCH_ACCEL_MIN  # stock uses -4.0 m/s^2 once stopped but limited by safety model
+        ret.longitudinalActuatorDelay = 0.3  # measured ~0.26s effective lag across vEgo 2-9 m/s; 0.5s overshoots brake commands
     else:
       # default longitudinal tuning for all Nidec hondas
       ret.longitudinalTuning.kiBP = [0., 5., 35.]
