@@ -6,7 +6,6 @@ from opendbc.car.honda import hondacan
 from opendbc.car.honda.values import CAR, CruiseButtons, CruiseSettings, HONDA_BOSCH, HONDA_BOSCH_CANFD, HONDA_BOSCH_RADARLESS, \
                                      HONDA_BOSCH_TJA_CONTROL, HONDA_NIDEC_ALT_PCM_ACCEL, CarControllerParams
 from opendbc.car.interfaces import CarControllerBase
-from opendbc.car.common.pid import PIDController
 
 from opendbc.sunnypilot.car.honda.mads import MadsCarController
 from opendbc.sunnypilot.car.honda.gas_interceptor import GasInterceptorCarController
@@ -123,14 +122,6 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
     self.lkas_button_send_remaining = 0
     self.last_lkas_button_frame = 0
 
-    # Bosch extra-brake controller
-    self.brake_pid = PIDController(k_p=([0,], [0,]),
-                                   k_i=([0.], [0.5]),
-                                   pos_limit=0.0,
-                                   neg_limit=-2.0,
-                                   rate=50)
-    self.brake_pid.reset()
-
   def update(self, CC, CC_SP, CS, now_nanos):
     MadsCarController.update(self, self.CP, CC, CC_SP)
     gas_pedal_force = 0.0
@@ -242,14 +233,7 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
         ts = self.frame * DT_CTRL
 
         if self.CP.carFingerprint in HONDA_BOSCH:
-          if (accel < 0) and (CS.out.vEgo > 1e-3):
-            brake_addon = self.brake_pid.update(error = accel - CS.out.aEgo, speed = CS.out.vEgo)
-            targetaccel = min(accel,accel + brake_addon)
-          else:
-            self.brake_pid.reset()
-            targetaccel = accel
-
-          self.accel = float(np.clip(targetaccel, self.params.BOSCH_ACCEL_MIN, self.params.BOSCH_ACCEL_MAX))
+          self.accel = float(np.clip(accel, self.params.BOSCH_ACCEL_MIN, self.params.BOSCH_ACCEL_MAX))
           gas_pedal_force = self.accel + wind_brake_ms2
 
           self.gas = float(np.interp(gas_pedal_force, self.params.BOSCH_GAS_LOOKUP_BP, self.params.BOSCH_GAS_LOOKUP_V))
