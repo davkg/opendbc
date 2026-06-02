@@ -43,7 +43,7 @@ static bool honda_fwd_brake = false;
 static bool honda_bosch_long = false;
 static bool honda_bosch_radarless = false;
 static bool honda_bosch_canfd = false;
-static bool honda_acc_control_seen = false;
+static uint32_t honda_acc_control_last_ts = 0U;  // time of last tx'd ACC_CONTROL (0x1C8)
 static bool honda_nidec_hybrid = false;
 typedef enum {HONDA_NIDEC, HONDA_BOSCH} HondaHw;
 static HondaHw honda_hw = HONDA_NIDEC;
@@ -215,10 +215,6 @@ static void honda_rx_hook(const CANPacket_t *msg) {
       }
     }
   }
-
-  if (!controls_allowed) {
-    honda_acc_control_seen = false;
-  }
 }
 
 static bool honda_tx_hook(const CANPacket_t *msg) {
@@ -300,7 +296,7 @@ static bool honda_tx_hook(const CANPacket_t *msg) {
     if (violation) {
       tx = false;
     } else {
-      honda_acc_control_seen = true;
+      honda_acc_control_last_ts = microsecond_timer_get();
     }
   }
 
@@ -472,6 +468,7 @@ static safety_config honda_bosch_init(uint16_t param) {
 
   honda_hw = HONDA_BOSCH;
   honda_brake_switch_prev = false;
+  honda_acc_control_last_ts = 0U;
   honda_bosch_radarless = GET_FLAG(param, HONDA_PARAM_RADARLESS);
   honda_bosch_canfd = GET_FLAG(param, HONDA_PARAM_BOSCH_CANFD);
   // Checking for alternate brake override from safety parameter
@@ -522,10 +519,17 @@ static safety_config honda_bosch_init(uint16_t param) {
 
 static bool honda_bosch_fwd_hook(int bus_num, int addr) {
   bool block_msg = false;
-  // Forward long controls (including AEB) when OP is disengaged
+
+  // For HONDA_BOSCH_RADARLESS ACC_CONTROL forwarding.
+  // Forward whole ACC_CONTROL (AEB) message when OP is disengaged and not transmitting ACC_CONTROL
+  // Timeout handles OP disengaging before controls_allowed goes to false.
+  // Allow up to 3 missing frames (60ms) before resuming forwarding. A ~260ms gap causes a cruise fault.
+  static const uint32_t HONDA_ACC_CONTROL_TIMEOUT = 60000U;  // us
+
   if (honda_bosch_radarless && honda_bosch_long && (bus_num == 2)) {
     if (addr == 0x1C8) {
-      block_msg = honda_acc_control_seen;
+      block_msg = controls_allowed &&
+                  (safety_get_ts_elapsed(microsecond_timer_get(), honda_acc_control_last_ts) < HONDA_ACC_CONTROL_TIMEOUT);
     }
   }
   return block_msg;

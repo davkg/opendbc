@@ -662,17 +662,32 @@ class TestHondaBoschRadarlessLongSafety(common.LongitudinalAccelSafetyTest, Hond
     pass
 
   def test_fwd_hook(self):
-    # 0x1C8 is conditionally blocked by the Bosch radarless fwd hook only when controls are allowed.
-    # 0x30C is always blocked: OP owns ACC_HUD unconditionally for radarless long (no disable_static_blocking).
-    # controls not allowed -> 0x1C8 should forward, 0x30C still blocked
-    self.safety.set_controls_allowed(False)
-    self.FWD_BLACKLISTED_ADDRS = {2: [0xE4, 0x33D, 0x30C, 0x1EF, 0x35E]}
+    fwd_addrs = {2: [0xE4, 0x33D, 0x30C, 0x1EF, 0x35E]}
+    blocked_addrs = {2: [0xE4, 0x33D, 0x1C8, 0x30C, 0x1EF, 0x35E]}
+
+    # OP not transmitting ACC_CONTROL -> stock 0x1C8 forwards, 0x30C still blocked
+    self.safety.set_controls_allowed(True)
+    self.safety.set_timer(int(1e6))  # last ACC_CONTROL tx (init=0) is long stale
+    self.FWD_BLACKLISTED_ADDRS = fwd_addrs
     super().test_fwd_hook()
 
-    # controls allowed -> both 0x1C8 and 0x30C should be blocked
+    # OP engaged and actively transmitting ACC_CONTROL -> stock 0x1C8 blocked
+    self.safety.set_timer(int(1e6))
+    self.assertTrue(self._tx(self._accel_msg(0)))  # arms the baton-handover timestamp
+    self.FWD_BLACKLISTED_ADDRS = blocked_addrs
+    super().test_fwd_hook()
+
+    # controls_allowed cleared (e.g. disengage while braking at a stop) -> hand back to the camera
+    # immediately, even though OP's last transmit is still fresh
+    self.safety.set_controls_allowed(False)
+    self.FWD_BLACKLISTED_ADDRS = fwd_addrs
+    super().test_fwd_hook()
+
+    # OP's ACC_CONTROL goes stale while still engaged (CC.enabled dropped, controls_allowed latched) ->
+    # stock 0x1C8 resumes forwarding after the timeout
     self.safety.set_controls_allowed(True)
-    self._tx(self._accel_msg(0))  # Set the honda_acc_control_seen baton-handover flag
-    self.FWD_BLACKLISTED_ADDRS = {2: [0xE4, 0x33D, 0x1C8, 0x30C, 0x1EF, 0x35E]}
+    self.safety.set_timer(int(2e6))
+    self.FWD_BLACKLISTED_ADDRS = fwd_addrs
     super().test_fwd_hook()
 
 
