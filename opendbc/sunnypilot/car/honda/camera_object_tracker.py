@@ -28,6 +28,12 @@ LONG_DIST_CAP_M = 158.0
 
 NUM_SLOTS = 10
 
+# CAMERA_LEAD.LEAD_DISTANCE is a dedicated single-lead distance in centimeters, with an all-ones
+# (65535) sentinel when the camera reports no lead. Maybe more accurate at range than the per-object
+# LONG_DIST (which is tuned for the dash display); 0 means the message hasn't been received yet.
+CAMERA_LEAD_NO_LEAD = 65535
+CM_TO_M = 0.01
+
 
 @dataclass
 class CameraObjectTrack:
@@ -49,8 +55,16 @@ class CameraObjectTracker:
       CameraObjectTrack(slot=i, object_id=0, d_rel=0.0, y_rel=0.0, valid=False)
       for i in range(NUM_SLOTS)
     ]
+    self.lead_distance = 0.0   # m, from CAMERA_LEAD (0 when no lead / out of range)
+    self.lead_valid = False    # camera reports an in-range lead
 
   def update(self, cp_cam: CANParser) -> None:
+    # Dedicated single-lead distance (cm; 65535 = no lead, 0 = not yet received). Updates more
+    # often than the object tracks, with a hard cutoff when the lead changes.
+    raw_lead = cp_cam.vl["CAMERA_LEAD"]["LEAD_DISTANCE"]
+    self.lead_valid = 0 < raw_lead < CAMERA_LEAD_NO_LEAD
+    self.lead_distance = float(raw_lead) * CM_TO_M if self.lead_valid else 0.0
+
     # Touch vl to ensure the message is registered with the parser; subsequent
     # cp.update() calls will then populate vl_all for this address.
     _ = cp_cam.vl["CAMERA_OBJECT_TRACKS"]
