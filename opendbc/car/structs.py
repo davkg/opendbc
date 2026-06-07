@@ -171,3 +171,16 @@ class CarControlSP:
 @auto_dataclass
 class CarStateSP:
   speedLimit: float = auto_field()
+  # Stock forward-camera lead + adjacent-vehicle tracks (currently Honda Bosch radarless), parsed from
+  # CAMERA_LEAD / CAMERA_OBJECT_TRACKS; radard fuses these into radarState.
+  cameraLeadDistance: float = auto_field()              # m, single-lead distance (0 = no lead / out of range)
+  cameraLeadValid: bool = auto_field()                  # camera reports an in-range lead
+  cameraTracks: list['CarStateSP.CameraTrack'] = auto_field()  # up to 10 slots; consumers filter by .valid
+
+  @auto_dataclass
+  class CameraTrack:
+    slot: int = auto_field()
+    objectId: int = auto_field()
+    dRel: float = auto_field()
+    yRel: float = auto_field()
+    valid: bool = auto_field()
