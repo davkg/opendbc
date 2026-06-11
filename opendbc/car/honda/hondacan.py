@@ -289,5 +289,8 @@ def honda_checksum(address: int, sig, d: bytearray) -> int:
     s += (x & 0xF) + (x >> 4)
   s = 8 - s
   if extended:
-    s += 3
+    # TODO: Extended (29-bit) IDs add 10 (not 3) on 2026 Civic + CAN-FD Accord 11G + 2026 CR-V.
+    # The old +3 might apply to older Bosch cars. Needs further investigation.
+    # s += 3
+    s += 10
   return s & 0xF
