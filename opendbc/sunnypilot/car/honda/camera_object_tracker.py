@@ -21,10 +21,10 @@ from dataclasses import dataclass
 from opendbc.can.parser import CANParser
 
 
-# Empty slots park raw LONG_DIST at 1023, which under our scaling (0.167, -10)
-# is 160.841 m. Pick a threshold safely above any plausible real track but
+# Empty slots park raw LONG_DIST at 1023, which under our scaling (0.209, -16.9)
+# is 196.9 m. Pick a threshold safely above any plausible real track but
 # below the empty-slot value so real tracks remain valid.
-LONG_DIST_CAP_M = 158.0
+LONG_DIST_CAP_M = 195.0
 
 NUM_SLOTS = 10
 
