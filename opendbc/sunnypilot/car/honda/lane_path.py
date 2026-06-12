@@ -6,11 +6,11 @@
 # own, more responsive lane through the same wire format.
 #
 # Geometry: the 40 points are lateral offsets at fixed look-ahead distances, so on a curve the lateral
-# grows ~0.5*k*d^2 -- evenly spaced distances + a SINGLE gain give tiny near offsets and large far ones for
-# free (no distance-dependent scale needed). One gain maps the whole lane center: raw = -GAIN * lateral.
+# grows ~0.5*k*d^2 -- evenly spaced distances give tiny near offsets and large far ones for free. The
+# per-point gain maps the lane center to raw: raw_i = -GAIN[i] * lateral(LOOKAHEAD[i]).
 # Knobs (dialed in on-device):
 #   D_MAX  -- how far ahead the points reach
-#   GAIN   -- raw units per meter of lane-center lateral (~4.5 = stock scale = truthful in-lane render)
+#   GAIN   -- per-point raw units per meter of lane-center lateral (matched to the stock encoding)
 # Sign is settled: stock offset = -OP lateral.
 import numpy as np
 
@@ -31,14 +31,18 @@ OFFSET_VALID_MAX = 2046
 # --- the tunable knobs (calibrate on-device) ---
 D_NEAR = 2.0                                         # nearest point look-ahead (m)
 D_MAX = 100.0                                        # farthest point look-ahead (m); matches the model path / object-track reach
-# The stock LANE_PATH encodes the lane center at ~4.5 raw units per meter, which renders the car's in-lane
-# position TRUTHFULLY on the dash (confirmed: hugging the left line shows the car hugging the line). So we
-# just match that scale -- there is nothing to compress on the lane. (The SEPARATE object-marker signal,
+# The stock LANE_PATH encodes the lane center TRUTHFULLY (confirmed on-road: hugging the left line shows
+# the car hugging the line), so we match its encoding. Measured against stock on routes 000000cf seg24/25/29
+# (validate_lane_path_scaling.py): centering (DC) gain ~6.8 raw/m -- identified distance-free from the seg29
+# lane-change shift (stock pt0 -15 raw / OP -2.2 m) -- and the effective gain RISES with distance to ~11 raw/m
+# at 100 m (stock's far points sample/extrapolate ~120-160 m; folding that into a per-point gain at OUR
+# distances reproduces stock raw with |corr|>0.9, held-out seg29 amplitude ratio 0.74 vs 0.39 at uniform 4.5).
+# Quadratic fit on seg24+25, near anchored at the DC gain. (The SEPARATE object-marker signal,
 # CAMERA_OBJECT_TRACKS LAT_DIST, IS under-scaled ~0.35x vs reality, but that's a different message and a
 # plan-(b) fix, not the lane.) The dash draws the lane lines at a FIXED width we can't change, so this gain
-# sets only the center path's shift + curve. Earlier 28 over-displayed ~6x (car drawn over the line). Drive-tunable.
-GAIN = 4.5                                            # raw units per meter of lane-center lateral (= stock = truthful)
+# sets only the center path's shift + curve. Drive-tunable.
 LOOKAHEAD = np.linspace(D_NEAR, D_MAX, NUM_PTS)      # the 40 look-ahead distances, near->far
+GAIN = 6.27 + 0.0106 * LOOKAHEAD + 0.000354 * LOOKAHEAD ** 2  # per-point raw/m (~6.3 near -> ~10.9 at 100 m)
 
 # LKAS_HUD_2 lane-display fields (camera values, decoded from logs). We always enable both lines.
 LANE_LINE_ON = 3                                     # LEFT_LANE / RIGHT_LANE "shown" value (0 = off)
@@ -47,7 +51,7 @@ LKAS_BOH_1_NEUTRAL = 32                              # coarse road-curvature ind
 
 
 def _encode(lat):
-  """Lane-center lateral at each LOOKAHEAD (m, +left) -> 40 raw offsets. raw = -GAIN*lat (stock = -OP lateral)."""
+  """Lane-center lateral at each LOOKAHEAD (m, +left) -> 40 raw offsets. raw_i = -GAIN[i]*lat_i (stock = -OP lateral)."""
   raw = np.clip(np.round(-GAIN * np.asarray(lat, dtype=float)), -OFFSET_VALID_MAX, OFFSET_VALID_MAX)
   return [int(v) for v in raw]
 
