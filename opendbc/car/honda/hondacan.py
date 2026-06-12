@@ -203,6 +203,8 @@ def create_lkas_hud(packer, bus, CP, hud_control, lat_active, steering_available
     # TODO: needed for Bosch CAN FD?
     if CP.carFingerprint in HONDA_BOSCH_RADARLESS:
       lkas_hud_values['LKAS_PROBLEM'] = lkas_hud['LKAS_PROBLEM']
+      # Show gray (dashed) lines always
+      lkas_hud_values['DASHED_LANES'] = 1
 
   if not (CP.flags & HondaFlags.BOSCH_EXT_HUD):
     lkas_hud_values['RDM_OFF'] = 1

@@ -10,6 +10,7 @@ from opendbc.car.interfaces import CarControllerBase
 from opendbc.sunnypilot.car.honda.mads import MadsCarController
 from opendbc.sunnypilot.car.honda.gas_interceptor import GasInterceptorCarController
 from opendbc.sunnypilot.car.honda.icbm import IntelligentCruiseButtonManagementInterface
+from opendbc.sunnypilot.car.honda import lane_path
 
 VisualAlert = structs.CarControl.HUDControl.VisualAlert
 LongCtrlState = structs.CarControl.Actuators.LongControlState
@@ -316,6 +317,14 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
 
     if self.frame % 2 == 0 and self.CP.carFingerprint in HONDA_BOSCH_RADARLESS:
       can_sends.append(hondacan.create_speed_limit_dash_display(self.packer, self.CAN.pt, CC_SP.speedLimit))
+
+      # Render OP's lane on the dash via LANE_PATH: always emit one frame per ~50 Hz tick, cycling all
+      # 40 MUX values (4 banks). The panda relay blocks the stock LANE_PATH whenever we control, so we
+      # always send ours; an empty (unavailable) path draws nothing.
+      dp = CC_SP.dashPath
+      offsets = lane_path.encode_lane_path_poly(dp.poly, dp.valid)
+      mux = lane_path.MUX_CYCLE[(self.frame // 2) % len(lane_path.MUX_CYCLE)]
+      can_sends.append(lane_path.create_lane_path(self.packer, self.CAN.lkas, offsets, mux))
 
     if self.frame % 10 == 0 and self.CP.carFingerprint in HONDA_BOSCH_RADARLESS:
       can_sends.append(hondacan.create_camera_messages(self.packer, self.CAN.pt, CS.camera_messages, CC_SP.speedLimit))

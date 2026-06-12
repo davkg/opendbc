@@ -149,6 +149,12 @@ class CarControlSP:
   leadTwo: 'LeadData' = field(default_factory=lambda: LeadData())
   intelligentCruiseButtonManagement: 'IntelligentCruiseButtonManagement' = field(default_factory=lambda: IntelligentCruiseButtonManagement())
   speedLimit: float = auto_field()
+  dashPath: 'CarControlSP.DashPath' = field(default_factory=lambda: CarControlSP.DashPath())
+
+  @auto_dataclass
+  class DashPath:
+    valid: bool = auto_field()
+    poly: list[float] = auto_field()  # cubic coeffs [c0, c1, c2, c3]; y = c0 + c1*x + c2*x^2 + c3*x^3 (m, +left)
 
   @auto_dataclass
   class Param:

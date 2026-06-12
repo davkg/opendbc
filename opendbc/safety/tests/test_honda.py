@@ -595,9 +595,9 @@ class TestHondaBoschRadarlessSafetyBase(TestHondaBoschSafetyBase):
   STEER_BUS = 0
   BUTTONS_BUS = 2  # camera controls ACC, need to send buttons on bus 2
 
-  TX_MSGS = [[0xE4, 0], [0x296, 2], [0x33D, 0], [0x1EF, 0], [0x35E, 0]]
-  FWD_BLACKLISTED_ADDRS = {2: [0xE4, 0x33D, 0x1EF, 0x35E]}
-  RELAY_MALFUNCTION_ADDRS = {0: (0xE4, 0x33D, 0x1EF, 0x35E)}  # STEERING_CONTROL, SPEED_LIMIT_DASH_DISPLAY, CAMERA_MESSAGES
+  TX_MSGS = [[0xE4, 0], [0x296, 2], [0x33D, 0], [0x1EF, 0], [0x35E, 0], [0x6CD5554, 0]]
+  FWD_BLACKLISTED_ADDRS = {2: [0xE4, 0x33D, 0x1EF, 0x35E, 0x6CD5554]}
+  RELAY_MALFUNCTION_ADDRS = {0: (0xE4, 0x33D, 0x1EF, 0x35E, 0x6CD5554)}  # STEERING_CONTROL, SPEED_LIMIT_DASH_DISPLAY, CAMERA_MESSAGES, LANE_PATH
 
   def setUp(self):
     self.packer = CANPackerSafety("honda_bosch_radarless_generated")
@@ -631,9 +631,9 @@ class TestHondaBoschRadarlessLongSafety(common.LongitudinalAccelSafetyTest, Hond
   """
     Covers the Honda Bosch Radarless safety mode with longitudinal control
   """
-  TX_MSGS = [[0xE4, 0], [0x296, 2], [0x33D, 0], [0x1C8, 0], [0x30C, 0], [0x1EF, 0], [0x35E, 0]]
-  FWD_BLACKLISTED_ADDRS = {2: [0xE4, 0x33D, 0x1C8, 0x30C, 0x1EF, 0x35E]}
-  RELAY_MALFUNCTION_ADDRS = {0: (0xE4, 0x1C8, 0x30C, 0x33D, 0x1EF, 0x35E)}
+  TX_MSGS = [[0xE4, 0], [0x296, 2], [0x33D, 0], [0x1C8, 0], [0x30C, 0], [0x1EF, 0], [0x35E, 0], [0x6CD5554, 0]]
+  FWD_BLACKLISTED_ADDRS = {2: [0xE4, 0x33D, 0x1C8, 0x30C, 0x1EF, 0x35E, 0x6CD5554]}
+  RELAY_MALFUNCTION_ADDRS = {0: (0xE4, 0x1C8, 0x30C, 0x33D, 0x1EF, 0x35E, 0x6CD5554)}
 
   def setUp(self):
     super().setUp()
@@ -662,8 +662,8 @@ class TestHondaBoschRadarlessLongSafety(common.LongitudinalAccelSafetyTest, Hond
     pass
 
   def test_fwd_hook(self):
-    fwd_addrs = {2: [0xE4, 0x33D, 0x30C, 0x1EF, 0x35E]}
-    blocked_addrs = {2: [0xE4, 0x33D, 0x1C8, 0x30C, 0x1EF, 0x35E]}
+    fwd_addrs = {2: [0xE4, 0x33D, 0x30C, 0x1EF, 0x35E, 0x6CD5554]}
+    blocked_addrs = {2: [0xE4, 0x33D, 0x1C8, 0x30C, 0x1EF, 0x35E, 0x6CD5554]}
 
     # OP not transmitting ACC_CONTROL -> stock 0x1C8 forwards, 0x30C still blocked
     self.safety.set_controls_allowed(True)
