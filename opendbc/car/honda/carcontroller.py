@@ -319,12 +319,18 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
       can_sends.append(hondacan.create_speed_limit_dash_display(self.packer, self.CAN.pt, CC_SP.speedLimit))
 
       # Render OP's lane on the dash via LANE_PATH: always emit one frame per ~50 Hz tick, cycling all
-      # 40 MUX values (4 banks). The panda relay blocks the stock LANE_PATH whenever we control, so we
-      # always send ours; an empty (unavailable) path draws nothing.
+      # 40 MUX values (4 banks). check_relay statically blocks the camera's LANE_PATH, so we always send
+      # ours; an empty (unavailable) path draws nothing.
       dp = CC_SP.dashPath
       offsets = lane_path.encode_lane_path_poly(dp.poly, dp.valid)
       mux = lane_path.MUX_CYCLE[(self.frame // 2) % len(lane_path.MUX_CYCLE)]
       can_sends.append(lane_path.create_lane_path(self.packer, self.CAN.lkas, offsets, mux))
+
+    if self.frame % 20 == 0 and self.CP.carFingerprint in HONDA_BOSCH_RADARLESS:
+      # Take over LKAS_HUD_2 (5 Hz): keep both dash lane lines enabled so OP's LANE_PATH renders even when
+      # disengaged. dashPath.reach shrinks LANE_LENGTH to retract the lane on a model dropout (fade, not
+      # snap). check_relay statically blocks the camera's copy, so ours replaces it.
+      can_sends.append(lane_path.create_lkas_hud_2(self.packer, self.CAN.lkas, (self.frame // 20) % 4, CC_SP.dashPath.reach))
 
     if self.frame % 10 == 0 and self.CP.carFingerprint in HONDA_BOSCH_RADARLESS:
       can_sends.append(hondacan.create_camera_messages(self.packer, self.CAN.pt, CS.camera_messages, CC_SP.speedLimit))

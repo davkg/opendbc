@@ -155,6 +155,7 @@ class CarControlSP:
   class DashPath:
     valid: bool = auto_field()
     poly: list[float] = auto_field()  # cubic coeffs [c0, c1, c2, c3]; y = c0 + c1*x + c2*x^2 + c3*x^3 (m, +left)
+    reach: float = auto_field()       # rendered-length fraction 0..1 (1 = full; shrinks to 0 to retract on dropout)
 
   @auto_dataclass
   class Param:
