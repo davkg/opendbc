@@ -5,19 +5,13 @@
 # lane-display enable/length. We DON'T reproduce the camera's (smoothed, slow) path -- we feed OP's
 # own, more responsive lane through the same wire format.
 #
-# Geometry: the 40 points are lateral offsets at fixed look-ahead distances. We split the lane center
-# into two parts so each can be tuned (and later smoothed) independently:
-#   - centering: the car's lateral position within the lane (the path's offset at the car, c0). It
-#     shows up as a uniform shift on every point; CENTER_GAIN sets how strongly off-center reads.
-#   - curvature: the lane shape ahead, relative to the near point. On a curve the lateral grows
-#     ~0.5*k*d^2, so evenly spaced distances + a single CURVE_GAIN already give tiny near offsets and
-#     large far ones -- no distance-dependent scale needed.
-# Knobs (all dialed in on-device by watching the rendered lane):
-#   D_MAX        -- how far ahead the points reach
-#   CENTER_GAIN  -- raw units per meter of in-lane lateral offset (centering)
-#   CURVE_GAIN   -- raw units per meter of lane curvature (shape ahead)
-# The exact distance/scale can't be separated from logs (degenerate), but it doesn't need to be:
-# pick a sane mapping, render, and calibrate live (sign is settled: stock offset = -OP lateral).
+# Geometry: the 40 points are lateral offsets at fixed look-ahead distances, so on a curve the lateral
+# grows ~0.5*k*d^2 -- evenly spaced distances + a SINGLE gain give tiny near offsets and large far ones for
+# free (no distance-dependent scale needed). One gain maps the whole lane center: raw = -GAIN * lateral.
+# Knobs (dialed in on-device):
+#   D_MAX  -- how far ahead the points reach
+#   GAIN   -- raw units per meter of lane-center lateral (~4.5 = stock scale = truthful in-lane render)
+# Sign is settled: stock offset = -OP lateral.
 import numpy as np
 
 NUM_INDICES = 10
@@ -36,13 +30,14 @@ OFFSET_VALID_MAX = 2046
 
 # --- the tunable knobs (calibrate on-device) ---
 D_NEAR = 2.0                                         # nearest point look-ahead (m)
-D_MAX = 80.0                                         # farthest point look-ahead (m)
-# CENTER_GAIN: raw units per meter of in-lane offset (car's position within lane). A shared gain of 28
-# over-displayed offset ~2x on the first drive (hugging the right line drew the car centered ON it), so ~half.
-# CURVE_GAIN: raw units per meter of lane curvature (shape ahead, rel. to near point). If the dash scale is
-# uniform the same ~2x exaggerates curves too -- left at 28 pending the deferred curve-smoothing pass.
-CENTER_GAIN = 14.0
-CURVE_GAIN = 28.0
+D_MAX = 100.0                                        # farthest point look-ahead (m); matches the model path / object-track reach
+# The stock LANE_PATH encodes the lane center at ~4.5 raw units per meter, which renders the car's in-lane
+# position TRUTHFULLY on the dash (confirmed: hugging the left line shows the car hugging the line). So we
+# just match that scale -- there is nothing to compress on the lane. (The SEPARATE object-marker signal,
+# CAMERA_OBJECT_TRACKS LAT_DIST, IS under-scaled ~0.35x vs reality, but that's a different message and a
+# plan-(b) fix, not the lane.) The dash draws the lane lines at a FIXED width we can't change, so this gain
+# sets only the center path's shift + curve. Earlier 28 over-displayed ~6x (car drawn over the line). Drive-tunable.
+GAIN = 4.5                                            # raw units per meter of lane-center lateral (= stock = truthful)
 LOOKAHEAD = np.linspace(D_NEAR, D_MAX, NUM_PTS)      # the 40 look-ahead distances, near->far
 
 # LKAS_HUD_2 lane-display fields (camera values, decoded from logs). We always enable both lines.
@@ -51,15 +46,9 @@ LANE_LENGTH_MAX_VALUE = 33                           # observed camera max; LANE
 LKAS_BOH_1_NEUTRAL = 32                              # coarse road-curvature indicator, 32 = straight (deviates ~+-6 on curves)
 
 
-def _encode(y0, lat_full):
-  """In-lane offset y0 (m, +left) + lane-center lateral at each LOOKAHEAD (m, +left) -> 40 raw offsets.
-
-  Centering (y0, a uniform shift) and curvature (lat_full - y0) get separate gains so each is tunable
-  on its own. Stock offset = -OP lateral, hence the leading minus.
-  """
-  lat_full = np.asarray(lat_full, dtype=float)
-  raw = -(CENTER_GAIN * y0 + CURVE_GAIN * (lat_full - y0))
-  raw = np.clip(np.round(raw), -OFFSET_VALID_MAX, OFFSET_VALID_MAX)
+def _encode(lat):
+  """Lane-center lateral at each LOOKAHEAD (m, +left) -> 40 raw offsets. raw = -GAIN*lat (stock = -OP lateral)."""
+  raw = np.clip(np.round(-GAIN * np.asarray(lat, dtype=float)), -OFFSET_VALID_MAX, OFFSET_VALID_MAX)
   return [int(v) for v in raw]
 
 
@@ -72,21 +61,18 @@ def encode_lane_path(x, y):
   y = np.asarray(y, dtype=float)
   if x.size < 2 or x.max() < D_MAX:
     return [OFFSET_UNAVAILABLE] * NUM_PTS
-  y0 = float(np.interp(0.0, x, y))                   # in-lane offset at the car (centering)
-  return _encode(y0, np.interp(LOOKAHEAD, x, y))
+  return _encode(np.interp(LOOKAHEAD, x, y))
 
 
 def encode_lane_path_poly(poly, valid=True):
   """OP lane-center cubic coeffs [c0, c1, c2, c3] (y = c0 + c1*x + ..., +left) -> 40 raw offsets.
 
   This is the on-car path: the lane center is fit upstream (controlsd) and passed via carControlSP.
-  c0 is the in-lane offset at the car (centering); the rest is curvature. Returns all-unavailable when
-  `valid` is False or no coeffs are given.
+  Returns all-unavailable when `valid` is False or no coeffs are given.
   """
   if not valid or len(poly) == 0:
     return [OFFSET_UNAVAILABLE] * NUM_PTS
-  poly = list(poly)
-  return _encode(poly[0], np.polyval(poly[::-1], LOOKAHEAD))  # np.polyval takes highest-degree-first
+  return _encode(np.polyval(list(poly)[::-1], LOOKAHEAD))  # np.polyval takes highest-degree-first
 
 
 def create_lane_path(packer, bus, offsets, mux):
