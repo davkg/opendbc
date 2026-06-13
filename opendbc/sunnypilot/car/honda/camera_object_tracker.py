@@ -8,13 +8,11 @@ Message structure (reverse-engineered):
   Each of the 10 object slots is transmitted 4× per cycle (~5 Hz/object),
   spread across all four banks.
 
-opendbc's CANParser doesn't gate multiplexed signals by their mux value —
-T1..T10_OBJECT_ID (and the LONG_DIST / LAT_DIST families) all alias the
-same physical bits, so reading them via `cp.vl[...]["Tn_*"]` returns the
-same value 10 times. We instead iterate `cp.vl_all[...]` (the list of all
-frames since the last update), read `TRACK_INDEX` per frame, and dispatch
-each frame's data to the correct slot ourselves. This naturally covers
-all four banks for ~5 Hz/slot.
+Every frame carries one slot's data at fixed bit positions, identified by
+TRACK_INDEX. `cp.vl[...]` only exposes the most recent frame, so we iterate
+`cp.vl_all[...]` (every frame since the last update), read TRACK_INDEX per
+frame, and dispatch each frame's data to the correct slot ourselves. This
+naturally covers all four banks for ~5 Hz/slot.
 """
 from dataclasses import dataclass
 
@@ -31,11 +29,12 @@ NUM_SLOTS = 10
 
 @dataclass
 class CameraObjectTrack:
-  slot: int        # 0..9
-  object_id: int   # raw OBJECT_ID, 1..31 when valid, 0 when empty
-  d_rel: float     # longitudinal distance from ego (m)
-  y_rel: float     # lateral position, +left of ego (m)
-  valid: bool      # True if slot currently carries a real track
+  slot: int          # 0..9
+  object_id: int     # raw OBJECT_ID, 1..31 when valid, 0 when empty
+  d_rel: float       # longitudinal distance from ego (m)
+  y_rel: float       # lateral position, +left of ego (m)
+  is_lead_car: bool  # True when the camera tags this track as the lead car (always slot 0 when present)
+  valid: bool        # True if slot currently carries a real track
 
 
 class CameraObjectTracker:
@@ -46,7 +45,7 @@ class CameraObjectTracker:
 
   def __init__(self):
     self._tracks: list[CameraObjectTrack] = [
-      CameraObjectTrack(slot=i, object_id=0, d_rel=0.0, y_rel=0.0, valid=False)
+      CameraObjectTrack(slot=i, object_id=0, d_rel=0.0, y_rel=0.0, is_lead_car=False, valid=False)
       for i in range(NUM_SLOTS)
     ]
 
@@ -56,14 +55,17 @@ class CameraObjectTracker:
     _ = cp_cam.vl["CAMERA_OBJECT_TRACKS"]
     vla = cp_cam.vl_all["CAMERA_OBJECT_TRACKS"]
 
-    # T1..T10_* all alias the same bit positions (multiplex value is dropped by
-    # the DBC loader). Read any single Tn_* family.
+    # The data signals are declared multiplexed to TRACK_INDEX==1 in the DBC (so one
+    # example slot is visible in Cabana), but opendbc's CANParser doesn't gate on the
+    # mux value — it decodes them at the same fixed bit positions for every frame, which
+    # is what we want since each frame carries one slot's data regardless of TRACK_INDEX.
     indices = vla["TRACK_INDEX"]
-    obj_ids = vla["T1_OBJECT_ID"]
-    long_dists = vla["T1_LONG_DIST"]
-    lat_dists = vla["T1_LAT_DIST"]
+    obj_ids = vla["OBJECT_ID"]
+    long_dists = vla["LONG_DIST"]
+    lat_dists = vla["LAT_DIST"]
+    lead_flags = vla["IS_LEAD_CAR"]
 
-    for ti, oid, ld, yd in zip(indices, obj_ids, long_dists, lat_dists, strict=True):
+    for ti, oid, ld, yd, lead in zip(indices, obj_ids, long_dists, lat_dists, lead_flags, strict=True):
       slot = (int(ti) - 1) % 16  # TRACK_INDEX = (bank<<4)|slot, slot ∈ 1..10
       if 0 <= slot < NUM_SLOTS:
         valid = oid != 0 and ld < LONG_DIST_CAP_M
@@ -72,6 +74,7 @@ class CameraObjectTracker:
           object_id=int(oid),
           d_rel=float(ld),
           y_rel=float(yd),
+          is_lead_car=bool(lead),
           valid=valid,
         )
 

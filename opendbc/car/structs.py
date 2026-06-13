@@ -192,3 +192,4 @@ class CarStateSP:
     dRel: float = auto_field()
     yRel: float = auto_field()
     valid: bool = auto_field()
+    isLeadCar: bool = auto_field()

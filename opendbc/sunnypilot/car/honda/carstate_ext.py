@@ -46,7 +46,7 @@ class CarStateExt:
       ret_sp.cameraLeadDistance = float(raw_lead) * CM_TO_M if lead_valid else 0.0
       ret_sp.cameraLeadValid = lead_valid
       ret_sp.cameraTracks = [structs.CarStateSP.CameraTrack(slot=t.slot, objectId=t.object_id, dRel=t.d_rel,
-                                                            yRel=t.y_rel, valid=t.valid)
+                                                            yRel=t.y_rel, valid=t.valid, isLeadCar=t.is_lead_car)
                              for t in self.camera_object_tracker.snapshot()]
 
     if self.CP_SP.flags & HondaFlagsSP.NIDEC_HYBRID:
