@@ -103,19 +103,26 @@ def create_lkas_hud_2(packer, bus, counter, reach=1.0):
   `reach` (0..1) scales LANE_LENGTH (the rendered dash reach): 1 = full length, shrinking toward 0
   retracts the lane far->near to fade it out on a model dropout instead of snapping off.
 
+  CONSISTENCY (critical): the camera zeros ALL lane fields together when it has no lane. Sending
+  "lanes enabled (LEFT/RIGHT=3, BOH=32) but LANE_LENGTH=0 / all-2047 path" is a frame the camera never
+  emits, and the dash treats it as a fault -- it FREEZES the whole LKAS graphics layer (lanes AND the
+  forwarded object icons) until a valid lane returns. So we gate LEFT/RIGHT_LANE and LKAS_BOH_1 on
+  whether there's actually length to show, matching the camera's "no lane" frame.
+
   Replaces the camera's LKAS_HUD_2 (check_relay statically blocks it). At reach=1 it reproduces the
   camera's "lanes shown" frame byte-for-byte: both lines on, LANE_LENGTH maxed, LKAS_BOH_1 neutral
   (straight). The dash uses two rolling counters: COUNTER (covered by the checksum) and COUNTER_2,
   which trails COUNTER by one. CHECKSUM (honda_checksum +10, extended ID) is computed by the packer.
   """
   lane_length = max(0, min(LANE_LENGTH_MAX_VALUE, round(reach * LANE_LENGTH_MAX_VALUE)))
+  shown = lane_length > 0   # no length -> zero every lane field (camera's "no lane" frame)
   values = {
     "COUNTER": counter,
     "COUNTER_2": (counter - 1) % 4,
     "SET_ME_X01": 1,
-    "LKAS_BOH_1": LKAS_BOH_1_NEUTRAL,
-    "LEFT_LANE": LANE_LINE_ON,
-    "RIGHT_LANE": LANE_LINE_ON,
+    "LKAS_BOH_1": LKAS_BOH_1_NEUTRAL if shown else 0,
+    "LEFT_LANE": LANE_LINE_ON if shown else 0,
+    "RIGHT_LANE": LANE_LINE_ON if shown else 0,
     "LEFT_LANE_CROSSED": 0,
     "RIGHT_LANE_CROSSED": 0,
     "LANE_LENGTH": lane_length,
