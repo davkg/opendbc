@@ -11,6 +11,7 @@ from opendbc.sunnypilot.car.honda.mads import MadsCarController
 from opendbc.sunnypilot.car.honda.gas_interceptor import GasInterceptorCarController
 from opendbc.sunnypilot.car.honda.icbm import IntelligentCruiseButtonManagementInterface
 from opendbc.sunnypilot.car.honda import lane_path
+from opendbc.sunnypilot.car.honda import object_tracks
 
 VisualAlert = structs.CarControl.HUDControl.VisualAlert
 LongCtrlState = structs.CarControl.Actuators.LongControlState
@@ -104,6 +105,7 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
     self.packer = CANPacker(dbc_names[Bus.pt])
     self.params = CarControllerParams(CP)
     self.CAN = hondacan.CanBus(CP)
+    self.lead_track = object_tracks.LeadTrackId()  # slot-0 OBJECT_ID for OP's lead on the dash (radarless)
     self.tja_control = CP.carFingerprint in HONDA_BOSCH_TJA_CONTROL
 
     self.braking = False
@@ -325,6 +327,19 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
       offsets = lane_path.encode_lane_path_poly(dp.poly, dp.valid)
       mux = lane_path.MUX_CYCLE[(self.frame // 2) % len(lane_path.MUX_CYCLE)]
       can_sends.append(lane_path.create_lane_path(self.packer, self.CAN.lkas, offsets, mux))
+
+      # Replace the camera's CAMERA_OBJECT_TRACKS slot 0 (the lead) with OP's detected lead; slots 1-9 are sent
+      # inactive (Phase 1 -- the stock non-lead cars stop showing; forwarding them is Phase 2). Only when OP owns
+      # longitudinal control: the lead is a long-control concern, and stock ACC mode (lateral only) leaves this
+      # message to the camera (CAMERA_OBJECT_TRACKS is only blocked in the LONG safety TX list). check_relay
+      # statically blocks the camera's copy. Same 40-frame TRACK_INDEX cycle / cadence as LANE_PATH.
+      if self.CP.openpilotLongitudinalControl:
+        lead = CC_SP.leadOne
+        lead_obj_id = self.lead_track.update(lead.status, lead.dRel, lead.vRel, now_nanos * 1e-9)
+        ti = object_tracks.TRACK_INDEX_CYCLE[(self.frame // 2) % len(object_tracks.TRACK_INDEX_CYCLE)]
+        track = {"d_rel": lead.dRel, "y_rel": lead.yRel, "object_id": lead_obj_id} \
+          if ((ti - 1) % 16 == 0 and lead.status) else None
+        can_sends.append(object_tracks.create_object_track(self.packer, self.CAN.lkas, ti, track))
 
     if self.frame % 20 == 0 and self.CP.carFingerprint in HONDA_BOSCH_RADARLESS:
       # Take over LKAS_HUD_2 (5 Hz): keep both dash lane lines enabled so OP's LANE_PATH renders even when
