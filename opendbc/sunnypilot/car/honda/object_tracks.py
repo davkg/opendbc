@@ -9,7 +9,7 @@
 # Phase 1: replace ONLY slot 0 with OP's lead (radarState.leadOne); slots 1-9 are sent inactive (the camera's
 # empty-slot sentinel). check_relay statically blocks the camera's whole copy, so to keep showing the stock
 # non-lead cars we'd have to forward them too -- that's Phase 2.
-import numpy as np
+import math
 
 NUM_SLOTS = 10
 
@@ -78,6 +78,46 @@ class LeadTrackId:
     return self.object_id
 
 
+# Lead-marker SMOOTHING (LeadSmoother): the vision lead's dRel/yRel jitter on the dash -- ~0.1 m of dRel shimmer
+# when stopped behind a lead, and large OUTLIER spikes (~30% of distant frames jump >1 m, up to ~2.6 m) on a far
+# lead -- while lateral yRel jitter is ~0.1 m far / negligible near (route 00000005 seg1, lead_marker_design.py).
+# We smooth what we render WITHOUT lagging real motion:
+#   dRel: feed vRel forward (d(dRel)/dt = vRel) so an approaching / pulling-away lead has NO lag, then leak
+#         toward the measurement to reject jitter. The leak's input residual is clamped so a single spike can't
+#         yank the icon, and the feed-forward is GATED off near zero vRel so a STOPPED lead is a pure low-pass
+#         (most stable -- doesn't inject the small standing vRel noise, ~0.28 m/s).
+#   yRel: plain low-pass (lateral has no clean velocity to feed forward and moves slowly).
+# Reset (snap, don't slide) when the lead changes identity so the icon jumps to the new car. Deliberately SEPARATE
+# from LeadTrackId: re-ID wants to DETECT discontinuities, the display wants to HIDE them -- opposite goals.
+DREL_SMOOTH_TAU = 0.6     # s, dRel leak time-constant (jitter/drift rejection; vRel FF carries the real motion)
+YREL_SMOOTH_TAU = 0.5     # s, yRel low-pass time-constant
+FF_VREL_MIN = 0.5         # m/s, feed vRel forward only above this -> stopped lead is a pure low-pass
+DREL_RESID_CLAMP = 1.5    # m, cap the measurement residual fed to the leak so an outlier spike barely moves it
+
+
+class LeadSmoother:
+  """Smooths the lead's (dRel, yRel) for a stable dash marker. Call update() per TX tick; it snaps on a new id."""
+  def __init__(self):
+    self._id = 0
+    self._d = 0.0
+    self._y = 0.0
+    self._t = 0.0
+
+  def update(self, d_rel: float, y_rel: float, v_rel: float, object_id: int, now: float) -> tuple[float, float]:
+    """Returns the smoothed (d_rel, y_rel) to render. `object_id` is LeadTrackId's id -- a change = a new car."""
+    if object_id != self._id:                 # fresh lead / handoff -> snap to it, don't slide across
+      self._id, self._d, self._y, self._t = object_id, d_rel, y_rel, now
+      return d_rel, y_rel
+    dt = max(now - self._t, 1e-3)
+    self._t = now
+    if abs(v_rel) >= FF_VREL_MIN:              # feed-forward real motion (no lag); off near zero -> pure low-pass
+      self._d += v_rel * dt
+    resid = min(max(d_rel - self._d, -DREL_RESID_CLAMP), DREL_RESID_CLAMP)   # clamp -> spike reject
+    self._d += (1.0 - math.exp(-dt / DREL_SMOOTH_TAU)) * resid
+    self._y += (1.0 - math.exp(-dt / YREL_SMOOTH_TAU)) * (y_rel - self._y)
+    return self._d, self._y
+
+
 def create_object_track(packer, bus, track_index, track):
   """Pack one CAMERA_OBJECT_TRACKS frame for TRACK_INDEX `track_index`.
 
@@ -86,9 +126,12 @@ def create_object_track(packer, bus, track_index, track):
   lead reads stock LAT_DIST ~−3.2), IS_LEAD_CAR=1, ROTATION=0 (OP has no lead heading -- Phase 2), CAR_TYPE=CAR.
   CHECKSUM (honda) + COUNTER are computed by the packer.
 
-  NOTE: leadOne.yRel is heavily path-centered (only ~−0.2 m while a lead sits 2.3 m to the side), so the icon
-  renders near-centre on the correct side; true off-path lateral magnitude is a Phase-2 item (the model under-
-  reports it -- leadsV3[0].y is identical in magnitude, just sign-flipped, so no better).
+  NOTE: leadOne.yRel carries the road curvature, so it swings widely (±4.7 m over route 00000005 seg1+2; 12%
+  of frames >1 m) -- it ≈ where OUR LANE_PATH sits at the lead's distance (corr +0.99 vs -path_y(dRel), off-path
+  residual only ~0.2 m std). So the icon rides our rendered lane through curves, which is the alignment we want.
+  The model only UNDER-reports a genuine OFF-path lead -- a cut-in / adjacent-lane car on an otherwise straight
+  road, snapped toward our path (that one cut-in showed yRel ~−0.2 m at 3 m true offset) -- and that's the
+  Phase-2 item, not a general "yRel barely moves". leadsV3[0].y = -yRel exactly (corr −1.00, opposite frame).
   """
   values = {"TRACK_INDEX": track_index}
   if track is None:
@@ -99,7 +142,28 @@ def create_object_track(packer, bus, track_index, track):
       "IS_LEAD_CAR": 1,
       "CAR_TYPE": CAR_TYPE_CAR,
       "ROTATION": 0,
-      "LONG_DIST": float(np.clip(track["d_rel"], 0.0, LONG_DIST_MAX_M)),
-      "LAT_DIST": float(np.clip(track["y_rel"], -LAT_DIST_LIM_M, LAT_DIST_LIM_M)),
+      "LONG_DIST": min(max(track["d_rel"], 0.0), LONG_DIST_MAX_M),
+      "LAT_DIST": min(max(track["y_rel"], -LAT_DIST_LIM_M), LAT_DIST_LIM_M),
     })
   return packer.make_can_msg("CAMERA_OBJECT_TRACKS", bus, values)
+
+
+class LeadObjectTrack:
+  """OP's lead on the dash, end to end: owns the stable slot-0 OBJECT_ID (LeadTrackId), the dRel/yRel smoothing
+  (LeadSmoother), and the TRACK_INDEX cycle. The carcontroller just calls update() once per ~50 Hz LANE_PATH
+  tick and sends the returned frame."""
+  def __init__(self):
+    self._track_id = LeadTrackId()
+    self._smoother = LeadSmoother()
+
+  def update(self, packer, bus, lead, frame: int, now: float):
+    """`lead` = carControlSP.leadOne (status/dRel/yRel/vRel); `frame` = the carcontroller frame counter. Returns
+    one packed CAMERA_OBJECT_TRACKS can_msg: OP's lead in slot 0 when the cycle lands on a slot-0 index, else an
+    inactive slot (slots 1-9 stay empty in Phase 1). Runs the re-ID + smoothing every tick so their dt-aware
+    state stays continuous, even on the frames that pack a non-lead slot."""
+    obj_id = self._track_id.update(lead.status, lead.dRel, lead.vRel, now)
+    d_rel, y_rel = self._smoother.update(lead.dRel, lead.yRel, lead.vRel, obj_id, now)
+    track_index = TRACK_INDEX_CYCLE[(frame // 2) % len(TRACK_INDEX_CYCLE)]
+    on_lead_slot = (track_index - 1) % 16 == 0          # slot 0 = the lead
+    track = {"d_rel": d_rel, "y_rel": y_rel, "object_id": obj_id} if (on_lead_slot and lead.status) else None
+    return create_object_track(packer, bus, track_index, track)
