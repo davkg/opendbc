@@ -328,21 +328,13 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
       mux = lane_path.MUX_CYCLE[(self.frame // 2) % len(lane_path.MUX_CYCLE)]
       can_sends.append(lane_path.create_lane_path(self.packer, self.CAN.lkas, offsets, mux))
 
-      # Replace the camera's CAMERA_OBJECT_TRACKS slot 0 (the lead) with OP's detected lead; slots 1-9 are sent
-      # inactive (Phase 1 -- the stock non-lead cars stop showing; forwarding them is Phase 2). Only when OP owns
-      # longitudinal control: the lead is a long-control concern, and stock ACC mode (lateral only) leaves this
-      # message to the camera (CAMERA_OBJECT_TRACKS is only blocked in the LONG safety TX list). check_relay
-      # statically blocks the camera's copy. Same 40-frame TRACK_INDEX cycle / cadence as LANE_PATH.
+      # Replace the camera's CAMERA_OBJECT_TRACKS slot 0 (the lead) with OP's detected lead
       if self.CP.openpilotLongitudinalControl:
         can_sends.append(self.lead_track.update(self.packer, self.CAN.lkas, CC_SP.leadOne, self.frame, now_nanos * 1e-9))
 
     if self.frame % 20 == 0 and self.CP.carFingerprint in HONDA_BOSCH_RADARLESS:
-      # Take over LKAS_HUD_2 (5 Hz): keep both dash lane lines enabled so OP's LANE_PATH renders even when
-      # disengaged. dashPath.reach shrinks LANE_LENGTH to retract the lane on a model dropout (fade, not
-      # snap); dashPath.laneCross pulses LEFT/RIGHT_LANE_CROSSED at a lane-change crossing instant.
-      # check_relay statically blocks the camera's copy, so ours replaces it.
-      # COUNTER_2 trails the packer's auto-COUNTER (== frame//20 % 4) by one. left/rightLine draw each dash line
-      # per the model's per-side confidence (only the trusted line(s) show).
+      # Send lane path parameters
+      # COUNTER_2 trails the packer's COUNTER (== frame//20 % 4) by one. (TODO: can we drop the -1?)
       dp = CC_SP.dashPath
       can_sends.append(lane_path.create_lkas_hud_2(self.packer, self.CAN.lkas, (self.frame // 20 - 1) % 4,
                                                    dp.reach, dp.laneCross, dp.leftLine, dp.rightLine))

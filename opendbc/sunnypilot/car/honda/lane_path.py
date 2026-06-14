@@ -1,17 +1,16 @@
 # Render OpenPilot's lane onto the Honda Bosch radarless dash via the LANE_PATH + LKAS_HUD_2 messages.
 #
-# LANE_PATH is the camera's lane geometry as 40 lateral offsets (10 MUX indices x 4 sub-offsets,
+# LANE_PATH is the stock camera's lane geometry as 40 lateral offsets (10 MUX indices x 4 sub-offsets,
 # near->far), sent ~50 Hz cycling MUX over 4 redundant banks. LKAS_HUD_2 (5 Hz) is the dash's
-# lane-display enable/length. We DON'T reproduce the camera's (smoothed, slow) path -- we feed OP's
-# own, more responsive lane through the same wire format.
+# lane-display enable/length.
 #
 # Geometry: the 40 points are lateral offsets at fixed look-ahead distances, so on a curve the lateral
 # grows ~0.5*k*d^2 -- evenly spaced distances give tiny near offsets and large far ones for free. The
 # per-point gain maps the lane center to raw: raw_i = -GAIN[i] * lateral(LOOKAHEAD[i]).
-# Knobs (dialed in on-device):
+# Tuning knobs:
 #   D_MAX  -- how far ahead the points reach
 #   GAIN   -- per-point raw units per meter of lane-center lateral (matched to the stock encoding)
-# Sign is settled: stock offset = -OP lateral.
+# Sign: stock lateral offset = -OP lateral.
 import numpy as np
 
 NUM_INDICES = 10
@@ -28,23 +27,13 @@ MUX_CYCLE = tuple(idx + bank * 16 for bank in range(4) for idx in range(1, NUM_I
 OFFSET_UNAVAILABLE = 2047                            # camera's "no point here" sentinel (12-bit signed max)
 OFFSET_VALID_MAX = 2046
 
-# --- the tunable knobs (calibrate on-device) ---
 D_NEAR = 2.0                                         # nearest point look-ahead (m)
 D_MAX = 100.0                                        # farthest point look-ahead (m); matches the model path / object-track reach
-# The stock LANE_PATH encodes the lane center TRUTHFULLY (confirmed on-road: hugging the left line shows
-# the car hugging the line), so we match its encoding. Measured against stock on routes 000000cf seg24/25/29
-# (validate_lane_path_scaling.py): centering (DC) gain ~6.8 raw/m -- identified distance-free from the seg29
-# lane-change shift (stock pt0 -15 raw / OP -2.2 m) -- and the effective gain RISES with distance to ~11 raw/m
-# at 100 m (stock's far points sample/extrapolate ~120-160 m; folding that into a per-point gain at OUR
-# distances reproduces stock raw with |corr|>0.9, held-out seg29 amplitude ratio 0.74 vs 0.39 at uniform 4.5).
-# Quadratic fit on seg24+25, near anchored at the DC gain. (The SEPARATE object-marker signal,
-# CAMERA_OBJECT_TRACKS LAT_DIST, IS under-scaled ~0.35x vs reality, but that's a different message and a
-# plan-(b) fix, not the lane.) The dash draws the lane lines at a FIXED width we can't change, so this gain
-# sets only the center path's shift + curve. Drive-tunable.
+# The stock LANE_PATH encodes the lane center, attempt to match its encoding
 LOOKAHEAD = np.linspace(D_NEAR, D_MAX, NUM_PTS)      # the 40 look-ahead distances, near->far
 GAIN = 6.27 + 0.0106 * LOOKAHEAD + 0.000354 * LOOKAHEAD ** 2  # per-point raw/m (~6.3 near -> ~10.9 at 100 m)
 
-# LKAS_HUD_2 lane-display fields (camera values, decoded from logs). We always enable both lines.
+# LKAS_HUD_2 lane-display fields (camera values, decoded from logs)
 LANE_LINE_ON = 3                                     # LEFT_LANE / RIGHT_LANE "shown" value (0 = off)
 LANE_LENGTH_MAX_VALUE = 33                           # observed camera max; LANE_LENGTH scales the dash reach -> max = full
 LANE_WIDTH_DEFAULT = 32                              # stock ranges 25 ~ 40 ish
@@ -101,15 +90,11 @@ def create_lkas_hud_2(packer, bus, counter_2, reach=1.0, lane_cross=0, left_line
   """Pack one LKAS_HUD_2 frame: enable the dash lane lines so OP's LANE_PATH renders.
 
   `reach` (0..1) scales LANE_LENGTH (the rendered dash reach): 1 = full length, shrinking toward 0
-  retracts the lane far->near to fade it out on a model dropout instead of snapping off.
+  retracts the lane
 
-  `left_line` / `right_line` enable each dash line independently (the model's per-side confidence): only the
-  line(s) we trust are drawn, so a confident line still shows when the other is poor. The stock camera itself
-  sends asymmetric LEFT/RIGHT (e.g. 3/0), so this is dash-faithful. Both are still gated by `shown` (reach>0).
+  `left_line` / `right_line` enable each dash line independently (the model's per-side confidence)
 
-  `lane_cross` (0 none, +1 right, -1 left) pulses LEFT/RIGHT_LANE_CROSSED for the frame(s) it is set,
-  matching how the stock camera flags a lane change: a single ~5 Hz frame at the crossing instant (both
-  lines stay enabled throughout). Caller latches it ~one frame, so we just mirror the sign here.
+  `lane_cross` (0 none, +1 right, -1 left) pulses LEFT/RIGHT_LANE_CROSSED for the frame(s) it is set
   """
   lane_length = max(0, min(LANE_LENGTH_MAX_VALUE, round(reach * LANE_LENGTH_MAX_VALUE)))
   shown = lane_length > 0   # no length -> drop the lane lines
