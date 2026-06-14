@@ -47,7 +47,7 @@ GAIN = 6.27 + 0.0106 * LOOKAHEAD + 0.000354 * LOOKAHEAD ** 2  # per-point raw/m 
 # LKAS_HUD_2 lane-display fields (camera values, decoded from logs). We always enable both lines.
 LANE_LINE_ON = 3                                     # LEFT_LANE / RIGHT_LANE "shown" value (0 = off)
 LANE_LENGTH_MAX_VALUE = 33                           # observed camera max; LANE_LENGTH scales the dash reach -> max = full
-LKAS_BOH_1_NEUTRAL = 32                              # coarse road-curvature indicator, 32 = straight (deviates ~+-6 on curves)
+LANE_WIDTH_DEFAULT = 32                              # stock ranges 25 ~ 40 ish
 
 
 def _encode(lat):
@@ -97,7 +97,7 @@ def create_lane_path(packer, bus, offsets, mux):
   return packer.make_can_msg("LANE_PATH", bus, values)
 
 
-def create_lkas_hud_2(packer, bus, counter, reach=1.0, lane_cross=0):
+def create_lkas_hud_2(packer, bus, counter_2, reach=1.0, lane_cross=0):
   """Pack one LKAS_HUD_2 frame: enable both dash lane lines so OP's LANE_PATH renders.
 
   `reach` (0..1) scales LANE_LENGTH (the rendered dash reach): 1 = full length, shrinking toward 0
@@ -106,25 +106,13 @@ def create_lkas_hud_2(packer, bus, counter, reach=1.0, lane_cross=0):
   `lane_cross` (0 none, +1 right, -1 left) pulses LEFT/RIGHT_LANE_CROSSED for the frame(s) it is set,
   matching how the stock camera flags a lane change: a single ~5 Hz frame at the crossing instant (both
   lines stay enabled throughout). Caller latches it ~one frame, so we just mirror the sign here.
-
-  CONSISTENCY (critical): the camera zeros ALL lane fields together when it has no lane. Sending
-  "lanes enabled (LEFT/RIGHT=3, BOH=32) but LANE_LENGTH=0 / all-2047 path" is a frame the camera never
-  emits, and the dash treats it as a fault -- it FREEZES the whole LKAS graphics layer (lanes AND the
-  forwarded object icons) until a valid lane returns. So we gate LEFT/RIGHT_LANE and LKAS_BOH_1 on
-  whether there's actually length to show, matching the camera's "no lane" frame.
-
-  Replaces the camera's LKAS_HUD_2 (check_relay statically blocks it). At reach=1 it reproduces the
-  camera's "lanes shown" frame byte-for-byte: both lines on, LANE_LENGTH maxed, LKAS_BOH_1 neutral
-  (straight). The dash uses two rolling counters: COUNTER (covered by the checksum) and COUNTER_2,
-  which trails COUNTER by one. CHECKSUM (honda_checksum +10, extended ID) is computed by the packer.
   """
   lane_length = max(0, min(LANE_LENGTH_MAX_VALUE, round(reach * LANE_LENGTH_MAX_VALUE)))
-  shown = lane_length > 0   # no length -> zero every lane field (camera's "no lane" frame)
+  shown = lane_length > 0   # no length -> drop the lane lines
   values = {
-    "COUNTER": counter,
-    "COUNTER_2": (counter - 1) % 4,
+    "COUNTER_2": counter_2,
     "SET_ME_X01": 1,
-    "LKAS_BOH_1": LKAS_BOH_1_NEUTRAL if shown else 0,
+    "LANE_WIDTH_MAYBE": LANE_WIDTH_DEFAULT,
     "LEFT_LANE": LANE_LINE_ON if shown else 0,
     "RIGHT_LANE": LANE_LINE_ON if shown else 0,
     "LEFT_LANE_CROSSED": 1 if (shown and lane_cross < 0) else 0,
