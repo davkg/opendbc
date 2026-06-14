@@ -286,9 +286,11 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
       steering_available = CS.out.cruiseState.available and CS.out.vEgo > max(self.params.STEER_GLOBAL_MIN_SPEED, self.CP.minSteerSpeed)
       reduced_steering = CS.out.steeringPressed
       steer_maxed = abs(apply_torque) >= self.params.STEER_MAX
+      # Keep LKAS_HUD.LANE_LINES coherent with the LANE_PATH/LKAS_HUD_2 lane we draw
+      lane_shown = round(CC_SP.dashPath.reach * lane_path.LANE_LENGTH_MAX_VALUE) > 0
       can_sends.extend(hondacan.create_lkas_hud(self.packer, self.CAN.lkas, self.CP, hud_control, CC.latActive,
                                                 steering_available, reduced_steering, alert_steer_required, CS.lkas_hud, self.dashed_lanes,
-                                                steer_maxed))
+                                                steer_maxed, lane_shown))
 
       if self.CP.openpilotLongitudinalControl:
         # TODO: combining with create_acc_hud block above will change message order and will need replay logs regenerated

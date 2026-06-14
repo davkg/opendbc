@@ -183,7 +183,7 @@ def create_acc_hud_forwarded(packer, bus, acc_hud, hud_v_cruise, hud_control, is
 
 
 def create_lkas_hud(packer, bus, CP, hud_control, lat_active, steering_available, reduced_steering, alert_steer_required, lkas_hud, dashed_lanes,
-                    steer_maxed):
+                    steer_maxed, lane_shown=True):
   commands = []
 
   lkas_hud_values = {
@@ -196,7 +196,7 @@ def create_lkas_hud(packer, bus, CP, hud_control, lat_active, steering_available
   }
 
   if CP.carFingerprint in (HONDA_BOSCH_RADARLESS | HONDA_BOSCH_CANFD):
-    lkas_hud_values['LANE_LINES'] = 3
+    lkas_hud_values['LANE_LINES'] = 3 if lane_shown else 0
     lkas_hud_values['DASHED_LANES'] = lat_active
 
     # car likely needs to see LKAS_PROBLEM fall within a specific time frame, so forward from camera
