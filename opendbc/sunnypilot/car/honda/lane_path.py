@@ -97,11 +97,15 @@ def create_lane_path(packer, bus, offsets, mux):
   return packer.make_can_msg("LANE_PATH", bus, values)
 
 
-def create_lkas_hud_2(packer, bus, counter_2, reach=1.0, lane_cross=0):
-  """Pack one LKAS_HUD_2 frame: enable both dash lane lines so OP's LANE_PATH renders.
+def create_lkas_hud_2(packer, bus, counter_2, reach=1.0, lane_cross=0, left_line=True, right_line=True):
+  """Pack one LKAS_HUD_2 frame: enable the dash lane lines so OP's LANE_PATH renders.
 
   `reach` (0..1) scales LANE_LENGTH (the rendered dash reach): 1 = full length, shrinking toward 0
   retracts the lane far->near to fade it out on a model dropout instead of snapping off.
+
+  `left_line` / `right_line` enable each dash line independently (the model's per-side confidence): only the
+  line(s) we trust are drawn, so a confident line still shows when the other is poor. The stock camera itself
+  sends asymmetric LEFT/RIGHT (e.g. 3/0), so this is dash-faithful. Both are still gated by `shown` (reach>0).
 
   `lane_cross` (0 none, +1 right, -1 left) pulses LEFT/RIGHT_LANE_CROSSED for the frame(s) it is set,
   matching how the stock camera flags a lane change: a single ~5 Hz frame at the crossing instant (both
@@ -113,8 +117,8 @@ def create_lkas_hud_2(packer, bus, counter_2, reach=1.0, lane_cross=0):
     "COUNTER_2": counter_2,
     "SET_ME_X01": 1,
     "LANE_WIDTH_MAYBE": LANE_WIDTH_DEFAULT,
-    "LEFT_LANE": LANE_LINE_ON if shown else 0,
-    "RIGHT_LANE": LANE_LINE_ON if shown else 0,
+    "LEFT_LANE": LANE_LINE_ON if (shown and left_line) else 0,
+    "RIGHT_LANE": LANE_LINE_ON if (shown and right_line) else 0,
     "LEFT_LANE_CROSSED": 1 if (shown and lane_cross < 0) else 0,
     "RIGHT_LANE_CROSSED": 1 if (shown and lane_cross > 0) else 0,
     "LANE_LENGTH": lane_length,

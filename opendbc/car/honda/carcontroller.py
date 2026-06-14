@@ -341,9 +341,11 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
       # disengaged. dashPath.reach shrinks LANE_LENGTH to retract the lane on a model dropout (fade, not
       # snap); dashPath.laneCross pulses LEFT/RIGHT_LANE_CROSSED at a lane-change crossing instant.
       # check_relay statically blocks the camera's copy, so ours replaces it.
-      # COUNTER_2 trails the packer's auto-COUNTER (== frame//20 % 4) by one.
+      # COUNTER_2 trails the packer's auto-COUNTER (== frame//20 % 4) by one. left/rightLine draw each dash line
+      # per the model's per-side confidence (only the trusted line(s) show).
+      dp = CC_SP.dashPath
       can_sends.append(lane_path.create_lkas_hud_2(self.packer, self.CAN.lkas, (self.frame // 20 - 1) % 4,
-                                                   CC_SP.dashPath.reach, CC_SP.dashPath.laneCross))
+                                                   dp.reach, dp.laneCross, dp.leftLine, dp.rightLine))
 
     if self.frame % 10 == 0 and self.CP.carFingerprint in HONDA_BOSCH_RADARLESS:
       can_sends.append(hondacan.create_camera_messages(self.packer, self.CAN.pt, CS.camera_messages, CC_SP.speedLimit))
