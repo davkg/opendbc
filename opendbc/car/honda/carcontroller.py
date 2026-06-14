@@ -333,7 +333,7 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
       # check_relay statically blocks the camera's copy, so ours replaces it.
       # COUNTER_2 trails the packer's auto-COUNTER (== frame//20 % 4) by one.
       can_sends.append(lane_path.create_lkas_hud_2(self.packer, self.CAN.lkas, (self.frame // 20 - 1) % 4,
-                                                   CC_SP.dashPath.reach, CC_SP.dashPath.laneCross)
+                                                   CC_SP.dashPath.reach, CC_SP.dashPath.laneCross))
 
     if self.frame % 10 == 0 and self.CP.carFingerprint in HONDA_BOSCH_RADARLESS:
       can_sends.append(hondacan.create_camera_messages(self.packer, self.CAN.pt, CS.camera_messages, CC_SP.speedLimit))
