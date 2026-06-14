@@ -334,7 +334,9 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
       # message to the camera (CAMERA_OBJECT_TRACKS is only blocked in the LONG safety TX list). check_relay
       # statically blocks the camera's copy. Same 40-frame TRACK_INDEX cycle / cadence as LANE_PATH.
       if self.CP.openpilotLongitudinalControl:
-        can_sends.append(self.lead_track.update(self.packer, self.CAN.lkas, CC_SP.leadOne, self.frame, now_nanos * 1e-9))
+        # dashPath.poly lets the lead be placed relative to OUR rendered lane (cross-track); the dash adds the curve.
+        can_sends.append(self.lead_track.update(self.packer, self.CAN.lkas, CC_SP.leadOne,
+                                                CC_SP.dashPath.poly, self.frame, now_nanos * 1e-9))
 
     if self.frame % 20 == 0 and self.CP.carFingerprint in HONDA_BOSCH_RADARLESS:
       # Take over LKAS_HUD_2 (5 Hz): keep both dash lane lines enabled so OP's LANE_PATH renders even when
