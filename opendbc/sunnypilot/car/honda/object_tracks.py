@@ -32,6 +32,14 @@ CAR_TYPE_CAR = 7         # VAL_ 7 "CAR"
 LONG_DIST_MAX_M = 194.0  # keep an active lead below the 196.9 empty sentinel so it stays "valid"
 LAT_DIST_LIM_M = 204.7   # 12-bit signed @0.1 -> ±204.x m
 
+# The dash renders LAT_DIST in the EGO frame (the road curve IS in the lateral) but UNDER-SCALES it ~0.3x vs
+# reality -- measured stock-only (stock LAT_DIST vs the camera's own LANE_PATH curve and steering k*d^2/2,
+# |corr| 0.79, slope ~0.3; NOT road-relative). Our lane (LANE_PATH) is truthful (1:1), so we scale the lead's
+# true ego lateral (yRel) toward the stock factor to land the marker ON our lane; raw 1.0x overshoots ~3x (lead
+# drawn outside the lane on a steep curve). On-device knob: 0.3 = stock-matched (slightly under-reaches on
+# curves), up toward 1.0 reaches further.
+LAT_SCALE = 0.35         # multiplies leadOne.yRel -> dash LAT_DIST
+
 # Lead-identity re-ID (LeadTrackId): OP exposes no persistent lead identity, so we mint a new OBJECT_ID when the
 # lead first appears and when its range moves inconsistently with vRel for a sustained moment -- a handoff to a
 # different car (observed on routes 000000ea seg42 / 000000e9 seg17 as a ~8-11 m/s range-rate anomaly over ~2 s
@@ -122,14 +130,14 @@ def create_object_track(packer, bus, track_index, track):
   """Pack one CAMERA_OBJECT_TRACKS frame for TRACK_INDEX `track_index`.
 
   `track` is None for an inactive slot, else a dict {d_rel, y_rel, object_id}: OP's lead, mapped to LONG_DIST=dRel
-  and LAT_DIST=y_rel where y_rel is the lead's IN-LANE (cross-track) offset (computed in LeadObjectTrack), +left
-  like the dash's LAT_DIST (a right-lane lead reads stock LAT_DIST ~−3.2). IS_LEAD_CAR=1, ROTATION=0 (OP has no
-  lead heading -- Phase 2), CAR_TYPE=CAR. CHECKSUM (honda) + COUNTER are computed by the packer.
+  and LAT_DIST=y_rel (the scaled ego-frame lateral from LeadObjectTrack), +left like the dash's LAT_DIST (a
+  right-lane lead reads stock LAT_DIST ~−3.2). IS_LEAD_CAR=1, ROTATION=0 (OP has no lead heading -- Phase 2),
+  CAR_TYPE=CAR. CHECKSUM (honda) + COUNTER are computed by the packer.
 
-  NOTE: the dash is ROAD-RELATIVE -- it places the marker on the curved lane it draws (LANE_PATH) from a
-  cross-track offset, adding the curve itself. So we send the lead's offset from our rendered lane center, NOT
-  raw leadOne.yRel (which carries the full road curvature, ±4.7 m on curves, and would double-count it). An
-  on-lane lead reads ~0 (centered) even mid-curve. leadsV3[0].y = -yRel exactly (corr −1.00, opposite frame).
+  NOTE: the dash is EGO-FRAME (the road curve IS in the lateral) but UNDER-SCALES it ~0.3x -- confirmed
+  stock-only (cf seg22-25/29: stock LAT_DIST vs both the camera's own LANE_PATH curve and steering k*d^2/2,
+  |corr| 0.79, slope ~0.3). It is NOT road-relative. So LeadObjectTrack sends LAT_SCALE*yRel (the lead's true
+  ego lateral, scaled to land on our truthful lane). leadsV3[0].y = -yRel exactly (corr −1.00, opposite frame).
   """
   values = {"TRACK_INDEX": track_index}
   if track is None:
@@ -146,14 +154,6 @@ def create_object_track(packer, bus, track_index, track):
   return packer.make_can_msg("CAMERA_OBJECT_TRACKS", bus, values)
 
 
-def _poly_at(poly, x: float) -> float:
-  """Evaluate the dashPath lane cubic [c0, c1, c2, c3] at distance x (Horner; keeps this module numpy-free)."""
-  v = 0.0
-  for c in reversed(poly):
-    v = v * x + c
-  return v
-
-
 class LeadObjectTrack:
   """OP's lead on the dash, end to end: owns the stable slot-0 OBJECT_ID (LeadTrackId), the dRel/yRel smoothing
   (LeadSmoother), and the TRACK_INDEX cycle. The carcontroller just calls update() once per ~50 Hz LANE_PATH
@@ -162,19 +162,16 @@ class LeadObjectTrack:
     self._track_id = LeadTrackId()
     self._smoother = LeadSmoother()
 
-  def update(self, packer, bus, lead, lane_poly, frame: int, now: float):
-    """`lead` = carControlSP.leadOne (status/dRel/yRel/vRel); `lane_poly` = carControlSP.dashPath.poly (the
-    rendered lane cubic [c0..c3], possibly empty); `frame` = the carcontroller frame counter. Returns one packed
-    CAMERA_OBJECT_TRACKS can_msg: OP's lead in slot 0 when the cycle lands on a slot-0 index, else an inactive
-    slot (slots 1-9 stay empty in Phase 1). Runs the re-ID + smoothing every tick so their dt-aware state stays
-    continuous, even on the frames that pack a non-lead slot."""
+  def update(self, packer, bus, lead, frame: int, now: float):
+    """`lead` = carControlSP.leadOne (status/dRel/yRel/vRel); `frame` = the carcontroller frame counter. Returns
+    one packed CAMERA_OBJECT_TRACKS can_msg: OP's lead in slot 0 when the cycle lands on a slot-0 index, else an
+    inactive slot (slots 1-9 stay empty in Phase 1). Runs the re-ID + smoothing every tick so their dt-aware
+    state stays continuous, even on the frames that pack a non-lead slot."""
     obj_id = self._track_id.update(lead.status, lead.dRel, lead.vRel, now)
-    # The dash places the lead RELATIVE TO THE LANE it draws (road-relative): it adds the lane curve back itself,
-    # so we send the lead's IN-LANE / cross-track offset, not its raw ego-frame yRel -- else a curve is counted
-    # twice. cross-track = yRel + lane_center(dRel); an on-lane lead reads ~0 (centered) even mid-curve. With no
-    # lane drawn there's nothing to subtract, so fall back to raw yRel (== cross-track on a straight road).
-    y_in_lane = lead.yRel + _poly_at(lane_poly, lead.dRel) if len(lane_poly) else lead.yRel
-    d_rel, y_rel = self._smoother.update(lead.dRel, y_in_lane, lead.vRel, obj_id, now)
+    # The dash is EGO-FRAME (the road curve is already in yRel, so the marker rides the lane through curves) but
+    # under-scales the lateral ~0.3x vs reality. Scale yRel by LAT_SCALE so the marker lands ON our truthful lane
+    # instead of overshooting outside it (raw 1.0x rendered ~3x too far on a steep curve). LAT_SCALE is the knob.
+    d_rel, y_rel = self._smoother.update(lead.dRel, LAT_SCALE * lead.yRel, lead.vRel, obj_id, now)
     track_index = TRACK_INDEX_CYCLE[(frame // 2) % len(TRACK_INDEX_CYCLE)]
     on_lead_slot = (track_index - 1) % 16 == 0          # slot 0 = the lead
     track = {"d_rel": d_rel, "y_rel": y_rel, "object_id": obj_id} if (on_lead_slot and lead.status) else None
