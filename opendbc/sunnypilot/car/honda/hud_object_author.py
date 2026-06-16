@@ -1,13 +1,13 @@
-# Render OpenPilot's detected lead car on the Honda Bosch radarless dash via the CAMERA_OBJECT_TRACKS message.
+# Render OpenPilot's detected lead car on the Honda Bosch radarless dash via the HUD_OBJECTS message.
 #
-# CAMERA_OBJECT_TRACKS (id 0x6CD5557 / 114120023) is the camera's adjacent-vehicle table: TRACK_INDEX
+# HUD_OBJECTS (id 0x6CD5557 / 114120023) is the camera's adjacent-vehicle table: TRACK_INDEX
 # multiplexes 10 object slots across 4 banks (1-10, 17-26, 33-42, 49-58 -> ~5 Hz/slot), each frame carrying
 # one slot at fixed bit positions. The lead, when present, is always track index 1 (slot 0) with IS_LEAD_CAR=1.
 # Structurally identical to LANE_PATH (see lane_path.py): MUX + m1 signals + honda CHECKSUM/COUNTER, so the
 # encoder mirrors create_lane_path -- the CANPacker computes the checksum/counter for the extended ID.
 #
 # We author the whole message (check_relay statically blocks the camera's copy): OP's lead replaces slot 0, and
-# the camera's adjacent (non-lead) cars are forwarded verbatim in slots 1-9 from the CameraObjectTracker snapshot.
+# the camera's adjacent (non-lead) cars are forwarded verbatim in slots 1-9 from the HudObjectTracker snapshot.
 # Their LONG/LAT are already in the camera's native encoding -- which the dash renders net-truthfully, same as our
 # truthful LANE_PATH -- so they need no rescaling. The camera's own lead track is dropped (slot 0 is OP-authored).
 import math
@@ -18,7 +18,7 @@ NUM_SLOTS = 10
 # evenly across the cycle), mirroring lane_path.MUX_CYCLE. Slot = (track_index - 1) % 16.
 TRACK_INDEX_CYCLE = tuple(slot + bank * 16 for bank in range(4) for slot in range(1, NUM_SLOTS + 1))
 
-# Physical values the camera sends for an EMPTY slot (decoded from stock CAMERA_OBJECT_TRACKS). Sending these
+# Physical values the camera sends for an EMPTY slot (decoded from stock HUD_OBJECTS). Sending these
 # byte-faithfully marks a slot empty; an inconsistent frame risks the dash rejecting it (cf the LKAS_HUD_2 freeze).
 INACTIVE = {
   "OBJECT_ID": 0,
@@ -41,7 +41,7 @@ LAT_DIST_LIM_M = 204.7   # 12-bit signed @0.1 -> ±204.x m
 # curves), up toward 1.0 reaches further.
 LAT_SCALE = 0.35         # multiplies leadOne.yRel -> dash LAT_DIST
 
-# Lead-identity re-ID (LeadTrackId): OP exposes no persistent lead identity, so we mint a new OBJECT_ID when the
+# Lead-identity re-ID (LeadObjectId): OP exposes no persistent lead identity, so we mint a new OBJECT_ID when the
 # lead first appears and when its range moves inconsistently with vRel for a sustained moment -- a handoff to a
 # different car (observed on routes 000000ea seg42 / 000000e9 seg17 as a ~8-11 m/s range-rate anomaly over ~2 s
 # while vRel stayed ~0/±1). dRel is noisy (the vision lead jitters several metres), so a per-sample range-rate
@@ -54,7 +54,7 @@ REID_REFRACTORY = 1.5    # s, collapse the multi-frame transition into one re-id
 MAX_OBJECT_ID = 31       # OBJECT_ID is 5-bit (1..31; 0 = empty)
 
 
-class LeadTrackId:
+class LeadObjectId:
   """Tracks a stable slot-0 OBJECT_ID for OP's lead, re-IDing on a fresh lead or a range discontinuity."""
   def __init__(self):
     self.object_id = 0
@@ -97,7 +97,7 @@ class LeadTrackId:
 #         (most stable -- doesn't inject the small standing vRel noise, ~0.28 m/s).
 #   yRel: plain low-pass (lateral has no clean velocity to feed forward and moves slowly).
 # Reset (snap, don't slide) when the lead changes identity so the icon jumps to the new car. Deliberately SEPARATE
-# from LeadTrackId: re-ID wants to DETECT discontinuities, the display wants to HIDE them -- opposite goals.
+# from LeadObjectId: re-ID wants to DETECT discontinuities, the display wants to HIDE them -- opposite goals.
 DREL_SMOOTH_TAU = 0.6     # s, dRel leak time-constant (jitter/drift rejection; vRel FF carries the real motion)
 YREL_SMOOTH_TAU = 0.5     # s, yRel low-pass time-constant
 FF_VREL_MIN = 0.5         # m/s, feed vRel forward only above this -> stopped lead is a pure low-pass
@@ -113,7 +113,7 @@ class LeadSmoother:
     self._t = 0.0
 
   def update(self, d_rel: float, y_rel: float, v_rel: float, object_id: int, now: float) -> tuple[float, float]:
-    """Returns the smoothed (d_rel, y_rel) to render. `object_id` is LeadTrackId's id -- a change = a new car."""
+    """Returns the smoothed (d_rel, y_rel) to render. `object_id` is LeadObjectId's id -- a change = a new car."""
     if object_id != self._id:                 # fresh lead / handoff -> snap to it, don't slide across
       self._id, self._d, self._y, self._t = object_id, d_rel, y_rel, now
       return d_rel, y_rel
@@ -127,8 +127,8 @@ class LeadSmoother:
     return self._d, self._y
 
 
-def create_object_track(packer, bus, track_index, track):
-  """Pack one CAMERA_OBJECT_TRACKS frame for TRACK_INDEX `track_index`.
+def create_hud_object(packer, bus, track_index, track):
+  """Pack one HUD_OBJECTS frame for TRACK_INDEX `track_index`.
 
   `track` is None for an inactive slot, else a dict {d_rel, y_rel, object_id, is_lead_car, car_type, rotation}.
   LONG_DIST=d_rel, LAT_DIST=y_rel (+left like the dash; a right-lane car reads ~−3.2). IS_LEAD_CAR marks OP's
@@ -137,7 +137,7 @@ def create_object_track(packer, bus, track_index, track):
 
   NOTE: the dash is EGO-FRAME (the road curve IS in the lateral) but UNDER-SCALES it ~0.3x -- confirmed
   stock-only (cf seg22-25/29: stock LAT_DIST vs both the camera's own LANE_PATH curve and steering k*d^2/2,
-  |corr| 0.79, slope ~0.3). It is NOT road-relative. So CameraObjectTrackAuthor sends LAT_SCALE*yRel for OP's lead (its
+  |corr| 0.79, slope ~0.3). It is NOT road-relative. So HudObjectAuthor sends LAT_SCALE*yRel for OP's lead (its
   true ego lateral, scaled to land on our truthful lane); forwarded stock tracks are already in this encoding.
   leadsV3[0].y = -yRel exactly (corr −1.00, opposite frame).
   """
@@ -153,19 +153,19 @@ def create_object_track(packer, bus, track_index, track):
       "LONG_DIST": min(max(track["d_rel"], 0.0), LONG_DIST_MAX_M),
       "LAT_DIST": min(max(track["y_rel"], -LAT_DIST_LIM_M), LAT_DIST_LIM_M),
     })
-  return packer.make_can_msg("CAMERA_OBJECT_TRACKS", bus, values)
+  return packer.make_can_msg("HUD_OBJECTS", bus, values)
 
 
-class CameraObjectTrackAuthor:
-  """Authors CAMERA_OBJECT_TRACKS end to end: OP's lead in slot 0 (stable OBJECT_ID via LeadTrackId + dRel/yRel
+class HudObjectAuthor:
+  """Authors HUD_OBJECTS end to end: OP's lead in slot 0 (stable OBJECT_ID via LeadObjectId + dRel/yRel
   smoothing via LeadSmoother) and the camera's adjacent (non-lead) cars forwarded in slots 1-9, cycling
   TRACK_INDEX. The carcontroller calls update() once per ~50 Hz tick with the camera-track snapshot and sends the
   returned frame."""
   def __init__(self):
-    self._track_id = LeadTrackId()
+    self._track_id = LeadObjectId()
     self._smoother = LeadSmoother()
     self._lead_id = 0       # OBJECT_ID currently emitted for OP's lead (0 = none)
-    self._prev_op_id = 0    # last LeadTrackId id, to detect a fresh lead / handoff
+    self._prev_op_id = 0    # last LeadObjectId id, to detect a fresh lead / handoff
 
   def _lead_object_id(self, status: bool, op_id: int, stock_lead_id: int | None, in_use: set[int]) -> int:
     """OBJECT_ID to emit for OP's lead. Prefer the camera's own lead id -- a clean, id-keyed handoff, and
@@ -181,9 +181,9 @@ class CameraObjectTrackAuthor:
     return self._lead_id
 
   def update(self, packer, bus, lead, tracks, frame: int, now: float):
-    """`lead` = carControlSP.leadOne (status/dRel/yRel/vRel); `tracks` = the camera's CameraObjectTrack snapshot
+    """`lead` = carControlSP.leadOne (status/dRel/yRel/vRel); `tracks` = the camera's HudObject snapshot
     (slot-indexed 0..9, may be None); `frame` = the carcontroller frame counter. Returns one packed
-    CAMERA_OBJECT_TRACKS can_msg for the slot the cycle lands on: OP's lead in slot 0, a forwarded camera
+    HUD_OBJECTS can_msg for the slot the cycle lands on: OP's lead in slot 0, a forwarded camera
     non-lead car in slots 1-9, else an inactive slot. Runs the re-ID + smoothing every tick so their dt-aware
     state stays continuous even on the frames that pack a non-lead slot."""
     op_id = self._track_id.update(lead.status, lead.dRel, lead.vRel, now)
@@ -218,4 +218,4 @@ class CameraObjectTrackAuthor:
       track = ({"d_rel": st.d_rel, "y_rel": st.y_rel, "object_id": st.object_id, "is_lead_car": 0,
                 "car_type": st.car_type, "rotation": st.rotation}
                if (st is not None and st.valid and not st.is_lead_car) else None)
-    return create_object_track(packer, bus, track_index, track)
+    return create_hud_object(packer, bus, track_index, track)

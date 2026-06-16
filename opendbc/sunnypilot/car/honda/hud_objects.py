@@ -1,6 +1,6 @@
 """
 Aggregates the per-slot tracks from the Honda Bosch radarless camera's
-CAMERA_OBJECT_TRACKS message (id 0x6CD5557 / 114120023) into a snapshot
+HUD_OBJECTS message (id 0x6CD5557 / 114120023) into a snapshot
 the rest of the stack can consume.
 
 Message structure (reverse-engineered):
@@ -28,7 +28,7 @@ NUM_SLOTS = 10
 
 
 @dataclass
-class CameraObjectTrack:
+class HudObject:
   slot: int          # 0..9
   object_id: int     # raw OBJECT_ID, 1..31 when valid, 0 when empty
   d_rel: float       # longitudinal distance from ego (m)
@@ -39,23 +39,23 @@ class CameraObjectTrack:
   rotation: int = -128    # raw ROTATION code (0 straight, <0 left, >0 right; -128 = inactive)
 
 
-class CameraObjectTracker:
-  """Aggregator over CAMERA_OBJECT_TRACKS. Slot state persists across ticks;
+class HudObjectTracker:
+  """Aggregator over HUD_OBJECTS. Slot state persists across ticks;
   each incoming frame updates exactly one slot (determined by TRACK_INDEX).
   `snapshot()` returns the current 10-slot table; consumers filter by `.valid`.
   """
 
   def __init__(self):
-    self._tracks: list[CameraObjectTrack] = [
-      CameraObjectTrack(slot=i, object_id=0, d_rel=0.0, y_rel=0.0, is_lead_car=False, valid=False)
+    self._tracks: list[HudObject] = [
+      HudObject(slot=i, object_id=0, d_rel=0.0, y_rel=0.0, is_lead_car=False, valid=False)
       for i in range(NUM_SLOTS)
     ]
 
   def update(self, cp_cam: CANParser) -> None:
     # Touch vl to ensure the message is registered with the parser; subsequent
     # cp.update() calls will then populate vl_all for this address.
-    _ = cp_cam.vl["CAMERA_OBJECT_TRACKS"]
-    vla = cp_cam.vl_all["CAMERA_OBJECT_TRACKS"]
+    _ = cp_cam.vl["HUD_OBJECTS"]
+    vla = cp_cam.vl_all["HUD_OBJECTS"]
 
     # The data signals are declared multiplexed to TRACK_INDEX==1 in the DBC (so one
     # example slot is visible in Cabana), but opendbc's CANParser doesn't gate on the
@@ -74,7 +74,7 @@ class CameraObjectTracker:
       slot = (int(ti) - 1) % 16  # TRACK_INDEX = (bank<<4)|slot, slot ∈ 1..10
       if 0 <= slot < NUM_SLOTS:
         valid = oid != 0 and ld < LONG_DIST_CAP_M
-        self._tracks[slot] = CameraObjectTrack(
+        self._tracks[slot] = HudObject(
           slot=slot,
           object_id=int(oid),
           d_rel=float(ld),
@@ -85,5 +85,5 @@ class CameraObjectTracker:
           rotation=int(rot),
         )
 
-  def snapshot(self) -> list[CameraObjectTrack]:
+  def snapshot(self) -> list[HudObject]:
     return self._tracks
