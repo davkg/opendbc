@@ -35,6 +35,8 @@ class CameraObjectTrack:
   y_rel: float       # lateral position, +left of ego (m)
   is_lead_car: bool  # True when the camera tags this track as the lead car (always slot 0 when present)
   valid: bool        # True if slot currently carries a real track
+  car_type: int = -1      # raw CAR_TYPE code (7 = CAR, -7 = TRUCK; -1 = inactive)
+  rotation: int = -128    # raw ROTATION code (0 straight, <0 left, >0 right; -128 = inactive)
 
 
 class CameraObjectTracker:
@@ -64,8 +66,11 @@ class CameraObjectTracker:
     long_dists = vla["LONG_DIST"]
     lat_dists = vla["LAT_DIST"]
     lead_flags = vla["IS_LEAD_CAR"]
+    car_types = vla["CAR_TYPE"]
+    rotations = vla["ROTATION"]
 
-    for ti, oid, ld, yd, lead in zip(indices, obj_ids, long_dists, lat_dists, lead_flags, strict=True):
+    for ti, oid, ld, yd, lead, ct, rot in zip(indices, obj_ids, long_dists, lat_dists, lead_flags,
+                                              car_types, rotations, strict=True):
       slot = (int(ti) - 1) % 16  # TRACK_INDEX = (bank<<4)|slot, slot ∈ 1..10
       if 0 <= slot < NUM_SLOTS:
         valid = oid != 0 and ld < LONG_DIST_CAP_M
@@ -76,6 +81,8 @@ class CameraObjectTracker:
           y_rel=float(yd),
           is_lead_car=bool(lead),
           valid=valid,
+          car_type=int(ct),
+          rotation=int(rot),
         )
 
   def snapshot(self) -> list[CameraObjectTrack]:

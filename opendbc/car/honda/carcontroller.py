@@ -105,7 +105,7 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
     self.packer = CANPacker(dbc_names[Bus.pt])
     self.params = CarControllerParams(CP)
     self.CAN = hondacan.CanBus(CP)
-    self.lead_track = object_tracks.LeadObjectTrack()  # OP's lead on the dash: stable id + dRel/yRel smoothing (radarless)
+    self.object_track_author = object_tracks.CameraObjectTrackAuthor()  # authors CAMERA_OBJECT_TRACKS: OP's lead + forwarded camera tracks (radarless)
     self.tja_control = CP.carFingerprint in HONDA_BOSCH_TJA_CONTROL
 
     self.braking = False
@@ -328,9 +328,10 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
       mux = lane_path.MUX_CYCLE[(self.frame // 2) % len(lane_path.MUX_CYCLE)]
       can_sends.append(lane_path.create_lane_path(self.packer, self.CAN.lkas, offsets, mux))
 
-      # Replace the camera's CAMERA_OBJECT_TRACKS slot 0 (the lead) with OP's detected lead
+      # Author CAMERA_OBJECT_TRACKS: OP's detected lead in slot 0, the camera's adjacent cars forwarded in 1-9
       if self.CP.openpilotLongitudinalControl:
-        can_sends.append(self.lead_track.update(self.packer, self.CAN.lkas, CC_SP.leadOne, self.frame, now_nanos * 1e-9))
+        tracks = CS.camera_object_tracker.snapshot() if CS.camera_object_tracker is not None else None
+        can_sends.append(self.object_track_author.update(self.packer, self.CAN.lkas, CC_SP.leadOne, tracks, self.frame, now_nanos * 1e-9))
 
     if self.frame % 20 == 0 and self.CP.carFingerprint in HONDA_BOSCH_RADARLESS:
       # Send lane path parameters
