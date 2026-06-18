@@ -16,8 +16,12 @@ from opendbc.sunnypilot.car.honda import hud_object_author
 VisualAlert = structs.CarControl.HUDControl.VisualAlert
 LongCtrlState = structs.CarControl.Actuators.LongControlState
 
-# temporary for ruff stylecheck
-assert CruiseSettings
+# Radarless: OP authors SCM_BUTTONS to the camera (bus 2) while engaged so it can switch off stock
+# LKAS. When stock LKAS is on it expects periodic steering input and disengages ACC (and thus OP) if
+# it's absent, so we hold the lkas_button briefly to toggle it off, then re-arm if it comes back on.
+LKAS_DISABLE_SENDS = 3    # SCM_BUTTONS frames at 25 Hz to register one lkas_button press
+LKAS_DISABLE_REARM = 500  # frames (5s) before retrying if stock LKAS is still ready
+
 
 def compute_gb_honda_bosch(accel, speed):
   # TODO returns 0s, is unused
@@ -303,19 +307,24 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
 
     cruise_setting = 0
 
-    # if self.CP.carFingerprint in HONDA_BOSCH_RADARLESS:
-    #   # Disable stock LKAS when active as it causes ACC to deactivate (touch steering wheel nag?)
-    #   if (CC.enabled and
-    #       CS.lkas_ready and
-    #       self.lkas_button_send_remaining == 0 and
-    #       self.frame >= self.last_lkas_button_frame + 100): # Wait 100 frames for HUD to update
-    #     self.lkas_button_send_remaining = 5
+    # Radarless: own SCM_BUTTONS to the camera while engaged (panda blocks the stock copy when
+    # controls_allowed). Pass the driver's cruise buttons through so ACC still responds, but take over
+    # CRUISE_SETTING: hold lkas_button to switch stock LKAS off, otherwise suppress the driver's
+    # lkas_button so stock LKAS can't re-arm. The press is still read on bus 0 for MADS or other features.
+    if self.CP.carFingerprint in HONDA_BOSCH_RADARLESS and CC.enabled and self.frame % 4 == 0:
+      if self.lkas_button_send_remaining == 0 and CS.lkas_ready and self.frame >= self.last_lkas_button_frame + LKAS_DISABLE_REARM:
+        self.lkas_button_send_remaining = LKAS_DISABLE_SENDS
 
-    #   if self.lkas_button_send_remaining > 0:
-    #     self.last_lkas_button_frame = self.frame
-    #     self.lkas_button_send_remaining -= 1
-    #     cruise_setting = CruiseSettings.LKAS
-    #     can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, 0, self.CP.carFingerprint, cruise_setting))
+      if self.lkas_button_send_remaining > 0:
+        self.last_lkas_button_frame = self.frame
+        self.lkas_button_send_remaining -= 1
+        cruise_setting = CruiseSettings.LKAS
+      elif CS.cruise_setting == CruiseSettings.LKAS:
+        cruise_setting = 0  # suppress the driver's lkas_button so the camera can't re-enable stock LKAS
+      else:
+        cruise_setting = CS.cruise_setting  # pass distance_adj / none through to the camera
+
+      can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, CS.cruise_buttons, self.CP.carFingerprint, cruise_setting))
 
     if self.frame % 2 == 0 and self.CP.carFingerprint in HONDA_BOSCH_RADARLESS:
       can_sends.append(hondacan.create_speed_limit_dash_display(self.packer, self.CAN.pt, CC_SP.speedLimit))
