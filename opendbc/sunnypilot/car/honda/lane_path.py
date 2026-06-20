@@ -1,55 +1,36 @@
-# Render OpenPilot's lane onto the Honda Bosch radarless dash via the LANE_PATH + LKAS_HUD_2 messages.
-#
-# LANE_PATH is the stock camera's lane geometry as 40 lateral offsets (10 MUX indices x 4 sub-offsets,
-# near->far), sent ~50 Hz cycling MUX over 4 redundant banks. LKAS_HUD_2 (5 Hz) is the dash's
-# lane-display enable/length.
-#
-# Geometry: the 40 points are lateral offsets at fixed look-ahead distances, so on a curve the lateral
-# grows ~0.5*k*d^2 -- evenly spaced distances give tiny near offsets and large far ones for free. The
-# per-point gain maps the lane center to raw: raw_i = -GAIN[i] * lateral(LOOKAHEAD[i]).
-# Tuning knobs:
-#   D_MAX  -- how far ahead the points reach
-#   GAIN   -- per-point raw units per meter of lane-center lateral (matched to the stock encoding)
-# Sign: stock lateral offset = -OP lateral.
+# Render OpenPilot's road lanes on the Honda Bosch radarless dash
 import numpy as np
 
 NUM_INDICES = 10
 OFFSETS_PER_INDEX = 4
-NUM_PTS = NUM_INDICES * OFFSETS_PER_INDEX            # 40, near->far in (mux-1)*4 + offset order
+NUM_PTS = NUM_INDICES * OFFSETS_PER_INDEX  # 40 lateral offsets, near->far
 
-# Full MUX cycle the camera emits: 10 logical indices across 4 redundant banks
-# (1-10, 17-26, 33-42, 49-58). The banks carry identical data and together provide the per-index
-# update rate, so we emit all four (bank-major -> each index refreshes evenly across the cycle).
+# LANE_PATH carries 40 lateral offsets as 10 MUX indices x 4 offsets each. The camera repeats every index
+# across 4 redundant banks: MUX = index + bank*16 (banks 1-10, 17-26, 33-42, 49-58), logical index = (mux-1) % 16.
+# We cycle all 40 MUX values bank-major at ~50 Hz so each index refreshes evenly.
 MUX_CYCLE = tuple(idx + bank * 16 for bank in range(4) for idx in range(1, NUM_INDICES + 1))
 
-# Clamp valid offsets below the 2047 sentinel so the dash renders them (real geometry stays within
-# ~+-340; this is just a guard against out-of-range values).
-OFFSET_UNAVAILABLE = 2047                            # camera's "no point here" sentinel (12-bit signed max)
-OFFSET_VALID_MAX = 2046
+OFFSET_UNAVAILABLE = 2047  # camera's "no point" sentinel (12-bit signed max)
+OFFSET_VALID_MAX = 2046    # clamp real offsets below the sentinel
 
-D_NEAR = 2.0                                         # nearest point look-ahead (m)
-D_MAX = 100.0                                        # farthest point look-ahead (m); matches the model path / object-track reach
-# The stock LANE_PATH encodes the lane center, attempt to match its encoding
-LOOKAHEAD = np.linspace(D_NEAR, D_MAX, NUM_PTS)      # the 40 look-ahead distances, near->far
-GAIN = 6.27 + 0.0106 * LOOKAHEAD + 0.000354 * LOOKAHEAD ** 2  # per-point raw/m (~6.3 near -> ~10.9 at 100 m)
+D_NEAR = 2.0
+D_MAX = 100.0
+LOOKAHEAD = np.linspace(D_NEAR, D_MAX, NUM_PTS)               # look-ahead distance of each offset
+GAIN = 6.27 + 0.0106 * LOOKAHEAD + 0.000354 * LOOKAHEAD ** 2  # raw units per meter of lateral, fit to the stock encoding
 
-# LKAS_HUD_2 lane-display fields (camera values, decoded from logs)
-LANE_LINE_ON = 3                                     # LEFT_LANE / RIGHT_LANE "shown" value (0 = off)
-LANE_LENGTH_MAX_VALUE = 33                           # observed camera max; LANE_LENGTH scales the dash reach -> max = full
-LANE_WIDTH_DEFAULT = 32                              # stock ranges 25 ~ 40 ish
+LANE_LINE_ON = 3            # LEFT_LANE / RIGHT_LANE shown value
+LANE_LENGTH_MAX_VALUE = 33  # full dash reach (have not seen/tested higher)
+LANE_WIDTH_DEFAULT = 32
 
 
 def _encode(lat):
-  """Lane-center lateral at each LOOKAHEAD (m, +left) -> 40 raw offsets. raw_i = -GAIN[i]*lat_i (stock = -OP lateral)."""
+  # lane-center lateral (m, +left) at each LOOKAHEAD -> raw offsets; stock offset = -OP lateral
   raw = np.clip(np.round(-GAIN * np.asarray(lat, dtype=float)), -OFFSET_VALID_MAX, OFFSET_VALID_MAX)
   return [int(v) for v in raw]
 
 
 def encode_lane_path(x, y):
-  """OP lane center (x, y arrays in meters, +left) -> 40 raw offsets near->far (offline / arrays).
-
-  Straight centered lane -> all zeros. Returns all-unavailable when OP has no usable lane reaching D_MAX.
-  """
+  """OP lane center (x, y arrays, m, +left) -> 40 raw offsets. All-unavailable if the lane doesn't reach D_MAX."""
   x = np.asarray(x, dtype=float)
   y = np.asarray(y, dtype=float)
   if x.size < 2 or x.max() < D_MAX:
@@ -58,23 +39,14 @@ def encode_lane_path(x, y):
 
 
 def encode_lane_path_poly(poly, valid=True):
-  """OP lane-center cubic coeffs [c0, c1, c2, c3] (y = c0 + c1*x + ..., +left) -> 40 raw offsets.
-
-  This is the on-car path: the lane center is fit upstream (controlsd) and passed via carControlSP.
-  Returns all-unavailable when `valid` is False or no coeffs are given.
-  """
+  """OP lane-center cubic [c0, c1, c2, c3] (m, +left) -> 40 raw offsets. On-car path, fit upstream in controlsd."""
   if not valid or len(poly) == 0:
     return [OFFSET_UNAVAILABLE] * NUM_PTS
-  return _encode(np.polyval(list(poly)[::-1], LOOKAHEAD))  # np.polyval takes highest-degree-first
+  return _encode(np.polyval(list(poly)[::-1], LOOKAHEAD))  # polyval wants highest-degree-first
 
 
 def create_lane_path(packer, bus, offsets, mux):
-  """Pack one LANE_PATH frame for MUX value `mux` (one of MUX_CYCLE) from the 40-offset array.
-
-  The carcontroller cycles `mux` through all of MUX_CYCLE (40 values, 4 banks) at ~50 Hz; the
-  logical index is (mux-1) % 16. COUNTER auto-increments and CHECKSUM (honda_checksum +10) is
-  computed by the packer.
-  """
+  """Pack one LANE_PATH frame for `mux` (one of MUX_CYCLE) from the 40-offset array."""
   base = ((mux - 1) % 16) * OFFSETS_PER_INDEX
   values = {
     "MUX": mux,
@@ -87,15 +59,7 @@ def create_lane_path(packer, bus, offsets, mux):
 
 
 def create_lkas_hud_2(packer, bus, counter_2, reach=1.0, lane_cross=0, left_line=True, right_line=True):
-  """Pack one LKAS_HUD_2 frame: enable the dash lane lines so OP's LANE_PATH renders.
-
-  `reach` (0..1) scales LANE_LENGTH (the rendered dash reach): 1 = full length, shrinking toward 0
-  retracts the lane
-
-  `left_line` / `right_line` enable each dash line independently (the model's per-side confidence)
-
-  `lane_cross` (0 none, +1 right, -1 left) pulses LEFT/RIGHT_LANE_CROSSED for the frame(s) it is set
-  """
+  """Pack one LKAS_HUD_2 frame enabling the dash lane lines."""
   lane_length = max(0, min(LANE_LENGTH_MAX_VALUE, round(reach * LANE_LENGTH_MAX_VALUE)))
   shown = lane_length > 0   # no length -> drop the lane lines
   values = {

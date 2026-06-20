@@ -280,6 +280,8 @@ def spam_buttons_command(packer, CAN, button_val, car_fingerprint, cruise_settin
 def honda_checksum(address: int, sig, d: bytearray) -> int:
   s = 0
   extended = address > 0x7FF
+  # Higher extended-ID range adds 10, lower adds 3. TODO: confirm the exact boundary.
+  high_extended = address > 0x100000
   addr = address
   while addr:
     s += addr & 0xF
@@ -291,8 +293,5 @@ def honda_checksum(address: int, sig, d: bytearray) -> int:
     s += (x & 0xF) + (x >> 4)
   s = 8 - s
   if extended:
-    # TODO: Extended (29-bit) IDs add 10 (not 3) on 2026 Civic + CAN-FD Accord 11G + 2026 CR-V.
-    # The old +3 might apply to older Bosch cars. Needs further investigation.
-    # s += 3
-    s += 10
+    s += 10 if high_extended else 3
   return s & 0xF

@@ -78,11 +78,8 @@ class TestCanChecksums(unittest.TestCase):
     }
 
     # known correct checksums according to the above values
-    # NOTE: extended now adds 10 (was 3) — RE'd from real Bosch camera extended messages on
-    # radarless + CAN-FD Accord 11G / 2026 CR-V; old LKAS_HUD_A (0x33DA) vectors were never
-    # validated against a real frame. Pending broader validation (see honda_checksum).
     checksum_std = [11, 10, 9, 8]
-    checksum_ext = [11, 10, 9, 8]
+    checksum_ext = [4, 3, 2, 1]
 
     for std, ext in zip(checksum_std, checksum_ext, strict=True):
       msgs = [
