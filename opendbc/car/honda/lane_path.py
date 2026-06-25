@@ -49,13 +49,6 @@ def encode_lane_path_poly(poly, valid=True):
   return _encode(np.polyval(list(poly)[::-1], LOOKAHEAD))  # polyval wants highest-degree-first
 
 
-def next_mux(mux):
-  try:
-    return MUX_CYCLE[(MUX_CYCLE.index(int(mux)) + 1) % len(MUX_CYCLE)]
-  except ValueError:
-    return MUX_CYCLE[0]
-
-
 def create_lane_path(packer, bus, offsets, mux):
   """Pack one LANE_PATH frame for `mux` (one of MUX_CYCLE) from the 40-offset array."""
   base = ((mux - 1) % 16) * OFFSETS_PER_INDEX

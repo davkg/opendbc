@@ -30,14 +30,13 @@ class HudObjectTracker:
       HudObject(slot=i, object_id=0, d_rel=0.0, y_rel=0.0, is_lead_car=False, valid=False)
       for i in range(NUM_SLOTS)
     ]
-    self.last_mux = 0   # MUX of the most recent frame; LANE_PATH (and our authored HUD_OBJECTS) follow it to stay paired
 
   def update(self, cp_cam: CANParser) -> None:
     # HUD_OBJECTS is one message multiplexed over 10 slots x 4 banks (MUX = (bank<<4)|slot, slot 1..10),
-    # each frame carrying one slot at fixed bit positions. vl exposes only the latest frame, so we iterate vl_all
-    # (all frames since the last update) and dispatch each to its slot by MUX.
-    # last_mux is what LANE_PATH and our authored HUD_OBJECTS follow, so they stay paired. (Touching vl first registers the message.)
-    self.last_mux = int(cp_cam.vl["HUD_OBJECTS"]["MUX"])
+    # each frame carrying one slot at fixed bit positions. Using vl_all to catch any missed frames, though not strictly
+    # necessary since update() is called at 100Hz and this signal updates at 50Hz.
+    # (Touching vl first registers the message.)
+    _ = cp_cam.vl["HUD_OBJECTS"]
     vla = cp_cam.vl_all["HUD_OBJECTS"]
 
     muxes = vla["MUX"]
@@ -196,9 +195,19 @@ def create_hud_object(packer, bus, mux, track):
   return packer.make_can_msg("HUD_OBJECTS", bus, values)
 
 
+def forward_hud_object(packer, bus, mux, tracks):
+  """Forward the camera's object for `mux`. Used in stock ACC, where the camera owns the lead. This is
+  necessary to keep mux reliably synced between hud_objects and lane_path."""
+  slot = (mux - 1) % 16
+  st = tracks[slot] if (tracks and slot < len(tracks)) else None
+  track = ({"d_rel": st.d_rel, "y_rel": st.y_rel, "object_id": st.object_id, "is_lead_car": st.is_lead_car,
+            "car_type": st.car_type, "rotation": st.rotation} if (st is not None and st.valid) else None)
+  return create_hud_object(packer, bus, mux, track)
+
+
 class HudObjectAuthor:
   """Authors HUD_OBJECTS: OP's lead in slot 0 (stable id via LeadObjectId + dRel/yRel smoothing via LeadSmoother),
-  the camera's non-lead cars forwarded in slots 1-9, cycling MUX. The carcontroller calls update() once per
+  the camera's non-lead cars forwarded in slots 1-9, cycling MUX. The carcontroller calls create() once per
   ~50 Hz tick and sends the returned frame."""
   def __init__(self):
     self._track_id = LeadObjectId()
@@ -218,7 +227,7 @@ class HudObjectAuthor:
     self._prev_op_id = op_id
     return self._lead_id
 
-  def update(self, packer, bus, lead, tracks, mux: int, now: float):
+  def create(self, packer, bus, lead, tracks, mux: int, now: float):
     """`lead` = carControlSP.leadOne; `tracks` = the camera's HudObject snapshot (may be None); `mux` = the shared
     LANE_PATH/HUD_OBJECTS multiplexor for this frame. Returns one packed HUD_OBJECTS frame for the slot the mux lands
     on (OP's lead in slot 0, else a forwarded camera adjacent car — including in slot 0 when OP has no lead — else
