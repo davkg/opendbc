@@ -154,11 +154,11 @@ class CarControlSP:
   @auto_dataclass
   class DashPath:
     valid: bool = auto_field()
-    poly: list[float] = auto_field()  # cubic coeffs [c0, c1, c2, c3]; y = c0 + c1*x + c2*x^2 + c3*x^3 (m, +left)
-    reach: float = auto_field()       # rendered-length fraction 0..1 (1 = full; shrinks to 0 to retract on dropout)
-    laneCross: int = auto_field()     # brief lane-cross pulse: 0 none, +1 right, -1 left (LKAS_HUD_2 LEFT/RIGHT_LANE_CROSSED)
-    leftLine: bool = auto_field()     # draw the left dash line (per-side model confidence -> LKAS_HUD_2 LEFT_LANE)
-    rightLine: bool = auto_field()    # draw the right dash line (per-side model confidence -> LKAS_HUD_2 RIGHT_LANE)
+    poly: list[float] = auto_field()  # lane-center cubic [c0, c1, c2, c3]; y = c0 + c1*x + c2*x^2 + c3*x^3 (m, +left)
+    reach: float = auto_field()       # rendered-length fraction 0..1 (1 = full, 0 = retracted)
+    laneCross: int = auto_field()     # lane-cross pulse: 0 none, +1 right, -1 left
+    leftLine: bool = auto_field()     # draw the left dash line
+    rightLine: bool = auto_field()    # draw the right dash line
 
   @auto_dataclass
   class Param:

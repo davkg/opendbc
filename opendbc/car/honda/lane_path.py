@@ -1,4 +1,6 @@
 # Render OpenPilot's road lanes on the Honda Bosch radarless dash
+from dataclasses import dataclass
+
 import numpy as np
 
 NUM_INDICES = 10
@@ -25,6 +27,15 @@ GAIN = 6.27 + 0.0106 * LOOKAHEAD + 0.000354 * LOOKAHEAD ** 2  # raw units per me
 LANE_LINE_ON = 3            # LEFT_LANE / RIGHT_LANE shown value
 LANE_LENGTH_MAX_VALUE = 33  # full dash reach (have not seen/tested higher)
 LANE_WIDTH_DEFAULT = 32
+
+# Dash lane fit (from modelV2): per-side line confidence -> lane-center cubic + draw length
+DASH_PATH_FIT_MAX = 110.0        # m, fit horizon
+DASH_PATH_PROB_ON = 0.25         # lane-line existence prob to start drawing
+DASH_PATH_PROB_OFF = 0.10        # ... and to keep drawing (hysteresis)
+DASH_HALF_OFFSET = 1.65          # m, half lane width when only one line is confident
+DASH_PATH_FULL_LEN_SPEED = 27.0  # m/s for full draw length
+DASH_PATH_LEAD_FULL_DIST = 70.0  # m lead distance for full draw length
+DASH_PATH_MIN_REACH = 0.15       # min draw fraction (short stub when stopped / low speed)
 
 
 def _encode(lat):
@@ -77,3 +88,74 @@ def create_lkas_hud_2(packer, bus, counter_2, reach=1.0, lane_cross=0, left_line
     "LANE_LENGTH": lane_length,
   }
   return packer.make_can_msg("LKAS_HUD_2", bus, values)
+
+
+# ---- Fit dash lane from modelV2 ---------------------------------------------------------------
+
+def _line_trusted(prob, was_on):
+  # hysteresis to prevent flicker
+  return prob >= (DASH_PATH_PROB_OFF if was_on else DASH_PATH_PROB_ON)
+
+
+def _fit_cubic(x, y):
+  # cubic [c0..c3] over x <= DASH_PATH_FIT_MAX; None if too few points in range
+  m = x <= DASH_PATH_FIT_MAX
+  if m.sum() < 4:
+    return None
+  return [float(v) for v in np.polyfit(x[m], y[m], 3)[::-1]]
+
+
+def select_lane_render(model, prev_left, prev_right):
+  """Dash center cubic + which ego lines to draw, from per-side model confidence. `model` = modelV2."""
+  lls, probs = model.laneLines, model.laneLineProbs
+  if len(lls) < 3 or len(probs) < 3 or len(lls[1].x) == 0:
+    return None, False, False
+
+  left = _line_trusted(probs[1], prev_left)
+  right = _line_trusted(probs[2], prev_right)
+  x = np.array(lls[1].x)
+  yl, yr = np.array(lls[1].y), np.array(lls[2].y)
+  if left and right:
+    poly = _fit_cubic(x, (yl + yr) / 2.0)
+  elif right:
+    poly = _fit_cubic(x, yr - DASH_HALF_OFFSET)
+  elif left:
+    poly = _fit_cubic(x, yl + DASH_HALF_OFFSET)
+  else:
+    return None, False, False
+  return (poly, left, right) if poly is not None else (None, False, False)
+
+
+@dataclass
+class DashLane:
+  offsets: list[int]   # 40 raw LANE_PATH offsets (all OFFSET_UNAVAILABLE when blank)
+  reach: float         # rendered length fraction (0 = draw nothing)
+  left_line: bool
+  right_line: bool
+  lane_cross: int = 0
+
+
+class LanePathFitter:
+  """Fits OP's lane-center path from modelV2 for the radarless dash, holding per-side line hysteresis."""
+  def __init__(self):
+    self._left_on = False
+    self._right_on = False
+
+  def update(self, model, v_ego, lead_d) -> DashLane:
+    """`model` = modelV2 (None when invalid); `v_ego` m/s; `lead_d` lead distance m (0 = none). Returns a DashLane.
+    Returns blank when the model is missing/invalid, no ego line is confident, or the reach rounds to zero.
+    Reach is the drawn length based on speed and lead distance. We don't show full reach as at low speeds because
+    the model's lane lines tend to be less accurate/confident on busy non-highway streets."""
+    blank = DashLane([OFFSET_UNAVAILABLE] * NUM_PTS, 0.0, False, False)
+
+    poly, left_on, right_on = (None, False, False)
+    if model is not None:
+      poly, left_on, right_on = select_lane_render(model, self._left_on, self._right_on)
+    if poly is None:
+      return blank
+    self._left_on, self._right_on = left_on, right_on
+
+    reach = float(np.clip(max(v_ego / DASH_PATH_FULL_LEN_SPEED, lead_d / DASH_PATH_LEAD_FULL_DIST, DASH_PATH_MIN_REACH), 0.0, 1.0))
+    if round(reach * LANE_LENGTH_MAX_VALUE) <= 0:
+      return blank
+    return DashLane(encode_lane_path_poly(poly), reach, left_on, right_on)

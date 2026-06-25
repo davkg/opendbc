@@ -109,7 +109,9 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
     self.packer = CANPacker(dbc_names[Bus.pt])
     self.params = CarControllerParams(CP)
     self.CAN = hondacan.CanBus(CP)
-    self.hud_object_author = hud_objects.HudObjectAuthor()  # authors HUD_OBJECTS: OP's lead + forwarded camera objects (radarless)
+    self.hud_object_author = hud_objects.HudObjectAuthor()
+    self.lane_path_fitter = lane_path.LanePathFitter()
+    self.dash_lane = lane_path.DashLane([lane_path.OFFSET_UNAVAILABLE] * lane_path.NUM_PTS, 0.0, False, False)
     self.tja_control = CP.carFingerprint in HONDA_BOSCH_TJA_CONTROL
 
     self.braking = False
@@ -329,14 +331,11 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
     if self.frame % 2 == 0 and self.CP.carFingerprint in HONDA_BOSCH_RADARLESS:
       can_sends.append(hondacan.create_speed_limit_dash_display(self.packer, self.CAN.pt, CC_SP.speedLimit))
 
-      # Render OP's lane on the dash via LANE_PATH: always emit one frame per ~50 Hz tick, cycling all
-      # 40 MUX values (4 banks). check_relay statically blocks the camera's LANE_PATH, so we always send
-      # ours; an empty (unavailable) path draws nothing.
-      dp = CC_SP.dashPath
-      offsets = lane_path.encode_lane_path_poly(dp.poly, dp.valid)
+      lead_d = CC_SP.leadOne.dRel if CC_SP.leadOne.status else 0.0  # extend the lane out to the lead (0 = no lead)
+      self.dash_lane = self.lane_path_fitter.update(self.model, CS.out.vEgo, lead_d)
       # Important: same mux for lane_path and hud_objects. Lane display freezes if muxes don't match.
       mux = lane_path.MUX_CYCLE[(self.frame // 2) % len(lane_path.MUX_CYCLE)]
-      can_sends.append(lane_path.create_lane_path(self.packer, self.CAN.lkas, offsets, mux))
+      can_sends.append(lane_path.create_lane_path(self.packer, self.CAN.lkas, self.dash_lane.offsets, mux))
 
       tracks = CS.hud_object_tracker.snapshot()
       if self.CP.openpilotLongitudinalControl:
@@ -347,14 +346,10 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
         can_sends.append(hud_objects.forward_hud_object(self.packer, self.CAN.lkas, mux, tracks))
 
     if self.frame % 20 == 0 and self.CP.carFingerprint in HONDA_BOSCH_RADARLESS:
-      # Send lane path parameters
       # COUNTER_2 trails the packer's COUNTER (== frame//20 % 4) by one. (TODO: can we drop the -1?)
-      dp = CC_SP.dashPath
+      dl = self.dash_lane
       can_sends.append(lane_path.create_lkas_hud_2(self.packer, self.CAN.lkas, (self.frame // 20 - 1) % 4,
-                                                   dp.reach, dp.laneCross, dp.leftLine, dp.rightLine))
-
-    if self.frame % 10 == 0 and self.CP.carFingerprint in HONDA_BOSCH_RADARLESS:
-      can_sends.append(hondacan.create_camera_messages(self.packer, self.CAN.pt, CS.camera_messages, CC_SP.speedLimit))
+                                                   dl.reach, dl.lane_cross, dl.left_line, dl.right_line))
 
     # Intelligent Cruise Button Management
     if not cruise_setting:
