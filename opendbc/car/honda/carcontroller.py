@@ -134,7 +134,9 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
     self.packer = CANPacker(dbc_names[Bus.pt])
     self.params = CarControllerParams(CP)
     self.CAN = hondacan.CanBus(CP)
-    self.hud_object_author = hud_objects.HudObjectAuthor()  # authors HUD_OBJECTS: OP's lead + forwarded camera objects (radarless)
+    self.hud_object_author = hud_objects.HudObjectAuthor()
+    self.lane_path_fitter = lane_path.LanePathFitter()
+    self.dash_lane = lane_path.DashLane([lane_path.OFFSET_UNAVAILABLE] * lane_path.NUM_PTS, 0.0, False, False)
     self.tja_control = CP.carFingerprint in HONDA_BOSCH_TJA_CONTROL
     self.param_writer = HondaParamWriter()
 
@@ -386,11 +388,11 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
 
     # Render OP's lane and lead car on the dash
     if self.frame % 2 == 0 and self.CP.carFingerprint in HONDA_BOSCH_RADARLESS:
-      dp = CC_SP.dashPath
-      offsets = lane_path.encode_lane_path_poly(dp.poly, dp.valid)
+      lead_d = CC_SP.leadOne.dRel if CC_SP.leadOne.status else 0.0  # extend the lane out to the lead (0 = no lead)
+      self.dash_lane = self.lane_path_fitter.update(self.model, CS.out.vEgo, lead_d)
       # Important: same mux for lane_path and hud_objects. Lane display freezes if muxes don't match.
       mux = lane_path.MUX_CYCLE[(self.frame // 2) % len(lane_path.MUX_CYCLE)]
-      can_sends.append(lane_path.create_lane_path(self.packer, self.CAN.lkas, offsets, mux))
+      can_sends.append(lane_path.create_lane_path(self.packer, self.CAN.lkas, self.dash_lane.offsets, mux))
 
       tracks = CS.hud_object_tracker.snapshot()
       if self.CP.openpilotLongitudinalControl:
@@ -402,9 +404,9 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
 
     if self.frame % 20 == 0 and self.CP.carFingerprint in HONDA_BOSCH_RADARLESS:
       # COUNTER_2 trails the packer's COUNTER (frame//20 % 4) by one. TODO: do we need the - 1 trail?
-      dp = CC_SP.dashPath
+      dl = self.dash_lane
       can_sends.append(lane_path.create_lkas_hud_2(self.packer, self.CAN.lkas, (self.frame // 20 - 1) % 4,
-                                                   dp.reach, dp.laneCross, dp.leftLine, dp.rightLine))
+                                                   dl.reach, dl.lane_cross, dl.left_line, dl.right_line))
 
     # Intelligent Cruise Button Management
     can_sends.extend(IntelligentCruiseButtonManagementInterface.update(self, CC_SP, self.packer, self.frame,
