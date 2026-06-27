@@ -328,10 +328,10 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
 
       can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, CS.cruise_buttons, self.CP.carFingerprint, cruise_setting))
 
+    # Render OP's lane and lead car on the dash
     if self.frame % 2 == 0 and self.CP.carFingerprint in HONDA_BOSCH_RADARLESS:
-      can_sends.append(hondacan.create_speed_limit_dash_display(self.packer, self.CAN.pt, CC_SP.speedLimit))
-
-      lead_d = CC_SP.leadOne.dRel if CC_SP.leadOne.status else 0.0  # extend the lane out to the lead (0 = no lead)
+      lead = hud_objects.lead_from_model(self.model, CS.out.vEgo)
+      lead_d = lead.dRel if lead.status else 0.0  # extend the lane out to the lead (0 = no lead)
       self.dash_lane = self.lane_path_fitter.update(self.model, CS.out.vEgo, lead_d)
       # Important: same mux for lane_path and hud_objects. Lane display freezes if muxes don't match.
       mux = lane_path.MUX_CYCLE[(self.frame // 2) % len(lane_path.MUX_CYCLE)]
@@ -340,16 +340,22 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
       tracks = CS.hud_object_tracker.snapshot()
       if self.CP.openpilotLongitudinalControl:
         # For OP long, replace lead car and forward rest of objects
-        can_sends.append(self.hud_object_author.create(self.packer, self.CAN.lkas, CC_SP.leadOne, tracks, mux, now_nanos * 1e-9))
+        can_sends.append(self.hud_object_author.create(self.packer, self.CAN.lkas, lead, tracks, mux, now_nanos * 1e-9))
       else:
         # For ACC, forward objects but with our mux
         can_sends.append(hud_objects.forward_hud_object(self.packer, self.CAN.lkas, mux, tracks))
 
     if self.frame % 20 == 0 and self.CP.carFingerprint in HONDA_BOSCH_RADARLESS:
-      # COUNTER_2 trails the packer's COUNTER (== frame//20 % 4) by one. (TODO: can we drop the -1?)
+      # COUNTER_2 trails the packer's COUNTER (frame//20 % 4) by one. TODO: do we need the - 1 trail?
       dl = self.dash_lane
       can_sends.append(lane_path.create_lkas_hud_2(self.packer, self.CAN.lkas, (self.frame // 20 - 1) % 4,
                                                    dl.reach, dl.lane_cross, dl.left_line, dl.right_line))
+
+    # Speed limit sign forwarding
+    if self.frame % 2 == 0 and self.CP.carFingerprint in HONDA_BOSCH_RADARLESS:
+      can_sends.append(hondacan.create_speed_limit_dash_display(self.packer, self.CAN.pt, CC_SP.speedLimit))
+    if self.frame % 10 == 0 and self.CP.carFingerprint in HONDA_BOSCH_RADARLESS:
+      can_sends.append(hondacan.create_camera_messages(self.packer, self.CAN.pt, CS.camera_messages, CC_SP.speedLimit))
 
     # Intelligent Cruise Button Management
     if not cruise_setting:
