@@ -16,12 +16,6 @@ from opendbc.car.honda import hud_objects
 VisualAlert = structs.CarControl.HUDControl.VisualAlert
 LongCtrlState = structs.CarControl.Actuators.LongControlState
 
-# Radarless: OP authors SCM_BUTTONS to the camera (bus 2) while engaged so it can switch off stock
-# LKAS. When stock LKAS is on it expects periodic steering input and disengages ACC (and thus OP) if
-# it's absent, so we hold the lkas_button briefly to toggle it off, then re-arm if it comes back on.
-LKAS_DISABLE_SENDS = 3    # SCM_BUTTONS frames at 25 Hz to register one lkas_button press
-LKAS_DISABLE_REARM = 500  # frames (5s) before retrying if stock LKAS is still ready
-
 
 def compute_gb_honda_bosch(accel, speed):
   # TODO returns 0s, is unused
@@ -309,13 +303,11 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
 
     cruise_setting = 0
 
-    # Radarless: own SCM_BUTTONS to the camera while engaged (panda blocks the stock copy when
-    # controls_allowed). Pass the driver's cruise buttons through so ACC still responds, but take over
-    # CRUISE_SETTING: hold lkas_button to switch stock LKAS off, otherwise suppress the driver's
-    # lkas_button so stock LKAS can't re-arm. The press is still read on bus 0 for MADS or other features.
+    # Radarless: when stock LKAS is active, touch steering wheel nag causes ACC disengagement. Disable LKAS automatically
+    # and block driver LKAS button from reaching camera
     if self.CP.carFingerprint in HONDA_BOSCH_RADARLESS and CC.enabled and self.frame % 4 == 0:
-      if self.lkas_button_send_remaining == 0 and CS.lkas_hud["LKAS_READY"] and self.frame >= self.last_lkas_button_frame + LKAS_DISABLE_REARM:
-        self.lkas_button_send_remaining = LKAS_DISABLE_SENDS
+      if self.lkas_button_send_remaining == 0 and CS.lkas_hud["LKAS_READY"] and self.frame >= self.last_lkas_button_frame + 500:
+        self.lkas_button_send_remaining = 3
 
       if self.lkas_button_send_remaining > 0:
         self.last_lkas_button_frame = self.frame
