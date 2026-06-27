@@ -267,9 +267,9 @@ def create_camera_messages(packer, bus, camera_messages, speed_limit_ms):
   return packer.make_can_msg("CAMERA_MESSAGES", bus, values)
 
 
-def spam_buttons_command(packer, CAN, button_val, car_fingerprint, cruise_setting=0):
+def spam_buttons_command(packer, CAN, cruise_button, cruise_setting, car_fingerprint):
   values = {
-    'CRUISE_BUTTONS': button_val,
+    'CRUISE_BUTTONS': cruise_button,
     'CRUISE_SETTING': cruise_setting,
   }
   # send buttons to camera on radarless (camera does ACC) cars

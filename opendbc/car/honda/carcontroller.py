@@ -228,14 +228,14 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
         can_sends.append(hondacan.create_bosch_supplemental_1(self.packer, self.CAN))
       # If using stock ACC, spam cancel command to kill gas when OP disengages.
       if pcm_cancel_cmd:
-        can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, CruiseButtons.CANCEL, self.CP.carFingerprint))
+        can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, CruiseButtons.CANCEL, 0, self.CP.carFingerprint))
       elif CC.cruiseControl.resume:
-        can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, CruiseButtons.RES_ACCEL, self.CP.carFingerprint))
+        can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, CruiseButtons.RES_ACCEL, 0, self.CP.carFingerprint))
 
     else:
       # Keep stock ACC synced for Radarless since ACC signals are forwarded when disengaged.
       if not CC.enabled and CS.out.cruiseState.enabled and self.CP.carFingerprint in HONDA_BOSCH_RADARLESS:
-        can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, CruiseButtons.CANCEL, self.CP.carFingerprint))
+        can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, CruiseButtons.CANCEL, 0, self.CP.carFingerprint))
 
       # Send gas and brake commands.
       if self.frame % 2 == 0:
@@ -314,7 +314,7 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
     # CRUISE_SETTING: hold lkas_button to switch stock LKAS off, otherwise suppress the driver's
     # lkas_button so stock LKAS can't re-arm. The press is still read on bus 0 for MADS or other features.
     if self.CP.carFingerprint in HONDA_BOSCH_RADARLESS and CC.enabled and self.frame % 4 == 0:
-      if self.lkas_button_send_remaining == 0 and CS.lkas_ready and self.frame >= self.last_lkas_button_frame + LKAS_DISABLE_REARM:
+      if self.lkas_button_send_remaining == 0 and CS.lkas_hud["LKAS_READY"] and self.frame >= self.last_lkas_button_frame + LKAS_DISABLE_REARM:
         self.lkas_button_send_remaining = LKAS_DISABLE_SENDS
 
       if self.lkas_button_send_remaining > 0:
@@ -326,7 +326,7 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
       else:
         cruise_setting = CS.cruise_setting  # pass distance_adj / none through to the camera
 
-      can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, CS.cruise_buttons, self.CP.carFingerprint, cruise_setting))
+      can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, CS.cruise_buttons, cruise_setting, self.CP.carFingerprint))
 
     # Render OP's lane and lead car on the dash
     if self.frame % 2 == 0 and self.CP.carFingerprint in HONDA_BOSCH_RADARLESS:
