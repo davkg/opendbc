@@ -5,6 +5,8 @@ from opendbc.car import Bus, DT_CTRL, rate_limit, make_tester_present_msg, struc
 from opendbc.car.honda import hondacan
 from opendbc.car.honda.values import CAR, CruiseButtons, CruiseSettings, HondaFlags, CarControllerParams
 from opendbc.car.interfaces import CarControllerBase
+from opendbc.car.honda import lane_path
+from opendbc.car.honda import hud_objects
 
 from opendbc.sunnypilot.car.honda.mads import MadsCarController
 from opendbc.sunnypilot.car.honda.gas_interceptor import GasInterceptorCarController
@@ -117,6 +119,9 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
 
     self.lkas_button_send_remaining = 0
     self.last_lkas_button_frame = 0
+
+    self.lane_path_fitter = lane_path.LanePathFitter()
+    self.dash_lane = lane_path.DashLane([lane_path.OFFSET_UNAVAILABLE] * lane_path.NUM_PTS, 0.0, False, False)
 
   def update(self, CC, CC_SP, CS, now_nanos):
     MadsCarController.update(self, self.CP, CC, CC_SP)
@@ -261,6 +266,21 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
           self.speed = pcm_speed
           if not self.CP_SP.enableGasInterceptor:
             self.gas = pcm_accel / self.params.NIDEC_GAS_MAX
+
+    # Render OP's lane on the dash
+    if self.frame % 2 == 0 and (self.CP.flags & HondaFlags.BOSCH_RADARLESS):
+      lead = hud_objects.lead_from_model(self.model, CS.out.vEgo)
+      lead_d = lead.dRel if lead.status else 0.0  # extend the lane out to the lead (0 = no lead)
+      self.dash_lane = self.lane_path_fitter.update(self.model, CS.out.vEgo, lead_d)
+      # Important: same mux for lane_path and hud_objects. Lane display freezes if muxes don't match.
+      mux = lane_path.MUX_CYCLE[(self.frame // 2) % len(lane_path.MUX_CYCLE)]
+      can_sends.append(lane_path.create_lane_path(self.packer, self.CAN.lkas, self.dash_lane.offsets, mux))
+
+    if self.frame % 20 == 0 and (self.CP.flags & HondaFlags.BOSCH_RADARLESS):
+      # COUNTER_2 trails the packer's COUNTER (frame//20 % 4) by one. TODO: do we need the - 1 trail?
+      dl = self.dash_lane
+      can_sends.append(lane_path.create_lkas_hud_2(self.packer, self.CAN.lkas, (self.frame // 20 - 1) % 4,
+                                                   dl.reach, dl.lane_cross, dl.left_line, dl.right_line))
 
     # Speed limit sign forwarding
     if self.frame % 2 == 0 and (self.CP.flags & HondaFlags.BOSCH_RADARLESS):
