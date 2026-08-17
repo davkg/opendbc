@@ -8,6 +8,7 @@ from opendbc.car.honda.hondacan import CanBus
 from opendbc.car.honda.values import CAR, DBC, STEER_THRESHOLD, HondaFlags, CruiseButtons, CruiseSettings, \
                                                  GearShifter, CarControllerParams
 from opendbc.car.interfaces import CarStateBase
+from opendbc.car.honda.hud_objects import HudObjectTracker
 
 from opendbc.sunnypilot.car.honda.carstate_ext import CarStateExt
 
@@ -52,6 +53,10 @@ class CarState(CarStateBase, CarStateExt):
     self.dash_speed_seen = False
     self.is_metric = False
     self.v_cruise_factor = 1.
+
+    # Honda Bosch radarless camera publishes HUD_OBJECTS — up to 10
+    # adjacent-vehicle tracks per cycle. Aggregate them for downstream consumers.
+    self.hud_object_tracker = HudObjectTracker() if (CP.flags & HondaFlags.BOSCH_RADARLESS) else None
 
   def update(self, can_parsers) -> tuple[structs.CarState, structs.CarStateSP]:
     cp = can_parsers[Bus.pt]
@@ -237,7 +242,10 @@ class CarState(CarStateBase, CarStateExt):
       *create_button_events(self.cruise_setting, prev_cruise_setting, SETTINGS_BUTTONS_DICT),
     ]
 
-    CarStateExt.update(self, ret, can_parsers)
+    if self.hud_object_tracker is not None:
+      self.hud_object_tracker.update(cp_cam)
+
+    CarStateExt.update(self, ret, ret_sp, can_parsers)
 
     return ret, ret_sp
 

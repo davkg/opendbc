@@ -10,15 +10,33 @@ from opendbc.car import Bus, structs
 from opendbc.can.parser import CANParser
 from opendbc.sunnypilot.car.honda.values_ext import HondaFlagsSP
 
+# CAMERA_LEAD.LEAD_DISTANCE is a dedicated single-lead distance in centimeters, with an all-ones
+# (65535) sentinel when the camera reports no lead. More accurate at range than the per-object
+# LONG_DIST (tuned for the dash display); 0 means the message hasn't been received yet.
+CAMERA_LEAD_NO_LEAD = 65535
+CM_TO_M = 0.01
+
 
 class CarStateExt:
   def __init__(self, CP, CP_SP):
     self.CP = CP
     self.CP_SP = CP_SP
 
-  def update(self, ret: structs.CarState, can_parsers: dict[StrEnum, CANParser]) -> None:
+  def update(self, ret: structs.CarState, ret_sp: structs.CarStateSP, can_parsers: dict[StrEnum, CANParser]) -> None:
     cp = can_parsers[Bus.pt]
     cp_cam = can_parsers[Bus.cam]
+
+    # self is the CarState instance, so the tracker carstate.py updates is visible here
+    if self.hud_object_tracker is not None:
+      # Dedicated single-lead distance (cm; 65535 = no lead), updated faster than
+      # the object tracks. radard fuses it into the vision lead's speed estimate.
+      raw_lead = cp_cam.vl["CAMERA_LEAD"]["LEAD_DISTANCE"]
+      lead_valid = 0 < raw_lead < CAMERA_LEAD_NO_LEAD
+      ret_sp.cameraLeadDistance = float(raw_lead) * CM_TO_M if lead_valid else 0.0
+      ret_sp.cameraLeadValid = lead_valid
+      ret_sp.hudObjects = [structs.CarStateSP.HudObject(slot=t.slot, objectId=t.object_id, dRel=t.d_rel,
+                                                        yRel=t.y_rel, valid=t.valid, isLeadCar=t.is_lead_car)
+                           for t in self.hud_object_tracker.snapshot()]
 
     if self.CP_SP.flags & HondaFlagsSP.NIDEC_HYBRID:
       ret.accFaulted = bool(cp.vl["HYBRID_BRAKE_ERROR"]["BRAKE_ERROR_1"] or cp.vl["HYBRID_BRAKE_ERROR"]["BRAKE_ERROR_2"])
