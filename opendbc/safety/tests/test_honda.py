@@ -629,7 +629,7 @@ class TestHondaBoschRadarlessLongSafety(common.LongitudinalAccelSafetyTest, Hond
   """
     Covers the Honda Bosch Radarless safety mode with longitudinal control
   """
-  TX_MSGS = [[0xE4, 0], [0x33D, 0], [0x1C8, 0], [0x30C, 0]]
+  TX_MSGS = [[0xE4, 0], [0x296, 2], [0x33D, 0], [0x1C8, 0], [0x30C, 0]]
   FWD_BLACKLISTED_ADDRS = {2: [0xE4, 0x33D, 0x1C8, 0x30C]}
   RELAY_MALFUNCTION_ADDRS = {0: (0xE4, 0x1C8, 0x30C, 0x33D)}
 
@@ -644,9 +644,52 @@ class TestHondaBoschRadarlessLongSafety(common.LongitudinalAccelSafetyTest, Hond
     }
     return self.packer.make_can_msg_safety("ACC_CONTROL", self.PT_BUS, values)
 
+  def test_accel_actuation_limits(self):
+    # Unlike the generic longitudinal test, radarless long blocks openpilot's
+    # ACC_CONTROL entirely when disengaged (the camera's ACC_CONTROL is forwarded
+    # in its place), so the inactive accel is rejected too when controls aren't allowed.
+    for accel in np.concatenate((np.arange(self.MIN_ACCEL - 1, self.MAX_ACCEL + 1, 0.05), [0, self.INACTIVE_ACCEL])):
+      accel = round(accel, 2)  # floats might not hit exact boundary conditions without rounding
+      for controls_allowed in [True, False]:
+        self.safety.set_controls_allowed(controls_allowed)
+        should_tx = controls_allowed and self.MIN_ACCEL <= accel <= self.MAX_ACCEL
+        self.assertEqual(should_tx, self._tx(self._accel_msg(accel)), (controls_allowed, accel))
+
   # Longitudinal doesn't need to send buttons
   def test_spam_cancel_safety_check(self):
     pass
+
+  def test_fwd_hook(self):
+    # ACC_CONTROL (0x1C8) is a baton: openpilot authors it while engaged, and the camera's own
+    # ACC_CONTROL (carrying AEB) is forwarded whenever openpilot isn't actively transmitting.
+    base = TestHondaBoschRadarlessLongSafety.FWD_BLACKLISTED_ADDRS[2]
+    cam_fwd = [a for a in base if a != 0x1C8]  # stock 0x1C8 forwarded from camera
+    cam_blocked = list(base)                   # OP transmitting ACC_CONTROL -> stock 0x1C8 blocked
+
+    # OP not transmitting ACC_CONTROL -> stock 0x1C8 forwards
+    self.safety.set_controls_allowed(True)
+    self.safety.set_timer(int(1e6))  # last ACC_CONTROL tx (init=0) is long stale
+    self.FWD_BLACKLISTED_ADDRS = {2: cam_fwd}
+    super().test_fwd_hook()
+
+    # OP engaged and actively transmitting ACC_CONTROL -> stock 0x1C8 blocked
+    self.safety.set_timer(int(1e6))
+    self.assertTrue(self._tx(self._accel_msg(0)))  # arms the baton-handover timestamp
+    self.FWD_BLACKLISTED_ADDRS = {2: cam_blocked}
+    super().test_fwd_hook()
+
+    # controls_allowed cleared (e.g. disengage while braking at a stop) -> hand back to the camera
+    # immediately, even though OP's last transmit is still fresh
+    self.safety.set_controls_allowed(False)
+    self.FWD_BLACKLISTED_ADDRS = {2: cam_fwd}
+    super().test_fwd_hook()
+
+    # OP's ACC_CONTROL goes stale while still engaged (CC.enabled dropped, controls_allowed latched) ->
+    # stock 0x1C8 resumes forwarding after the timeout
+    self.safety.set_controls_allowed(True)
+    self.safety.set_timer(int(2e6))
+    self.FWD_BLACKLISTED_ADDRS = {2: cam_fwd}
+    super().test_fwd_hook()
 
 
 class TestHondaBoschCANFDSafetyBase(TestHondaBoschSafetyBase):

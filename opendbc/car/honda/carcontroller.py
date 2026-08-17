@@ -199,6 +199,10 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
         can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, CruiseButtons.RES_ACCEL, self.CP))
 
     else:
+      # Keep stock ACC synced for Radarless since ACC signals are forwarded when disengaged.
+      if not CC.enabled and CS.out.cruiseState.enabled and (self.CP.flags & HondaFlags.BOSCH_RADARLESS):
+        can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, CruiseButtons.CANCEL, self.CP))
+
       # Send gas and brake commands.
       if self.frame % 2 == 0:
         ts = self.frame * DT_CTRL
@@ -209,8 +213,10 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
 
           stopping = actuators.longControlState == LongCtrlState.stopping
           self.stopping_counter = self.stopping_counter + 1 if stopping else 0
-          can_sends.extend(hondacan.create_acc_commands(self.packer, self.CAN, CC.enabled, CC.longActive, self.accel, self.gas,
-                                                        self.stopping_counter, self.CP))
+          # For radarless, panda forwards stock gas/brake when disengaged, so only send when engaged
+          if not (self.CP.flags & HondaFlags.BOSCH_RADARLESS) or CC.enabled:
+            can_sends.extend(hondacan.create_acc_commands(self.packer, self.CAN, CC.enabled, CC.longActive, self.accel, self.gas,
+                                                          self.stopping_counter, self.CP))
         else:
           apply_brake = np.clip(self.brake_last - wind_brake, 0.0, 1.0)
           apply_brake = int(np.clip(apply_brake * self.params.NIDEC_BRAKE_MAX, 0, self.params.NIDEC_BRAKE_MAX - 1))

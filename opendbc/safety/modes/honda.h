@@ -42,6 +42,7 @@ static bool honda_fwd_brake = false;
 static bool honda_bosch_long = false;
 static bool honda_bosch_radarless = false;
 static bool honda_bosch_canfd = false;
+static uint32_t honda_acc_control_last_ts = 0U;  // time of last tx'd ACC_CONTROL (0x1C8)
 static bool honda_nidec_hybrid = false;
 typedef enum {HONDA_NIDEC, HONDA_BOSCH} HondaHw;
 static HondaHw honda_hw = HONDA_NIDEC;
@@ -238,7 +239,7 @@ static bool honda_tx_hook(const CANPacket_t *msg) {
   unsigned int bus_buttons = (honda_bosch_radarless) ? 2U : bus_pt;  // the camera controls ACC on radarless Bosch cars
 
   // ACC_HUD: safety check (nidec w/o pedal)
-  if ((msg->addr == 0x30CU) && (msg->bus == bus_pt)) {
+  if ((msg->addr == 0x30CU) && (msg->bus == bus_pt) && !honda_bosch_radarless) {
     int pcm_speed = (msg->data[0] << 8) | msg->data[1];
     int pcm_gas = msg->data[2];
 
@@ -289,8 +290,12 @@ static bool honda_tx_hook(const CANPacket_t *msg) {
 
     bool violation = false;
     violation |= longitudinal_accel_checks(accel, HONDA_BOSCH_LONG_LIMITS);
+    // 0x1C8 (ACC_CONTROL) is forwarded from the camera when disengaged
+    violation |= !controls_allowed;
     if (violation) {
       tx = false;
+    } else {
+      honda_acc_control_last_ts = microsecond_timer_get();
     }
   }
 
@@ -425,7 +430,8 @@ static safety_config honda_bosch_init(uint16_t param) {
 
   static CanMsg HONDA_RADARLESS_TX_MSGS[] = {{0xE4, 0, 5, .check_relay = true}, {0x296, 2, 4, .check_relay = false}, {0x33D, 0, 8, .check_relay = true}};  // Bosch radarless
 
-  static CanMsg HONDA_RADARLESS_LONG_TX_MSGS[] = {{0xE4, 0, 5, .check_relay = true}, {0x33D, 0, 8, .check_relay = true}, {0x1C8, 0, 8, .check_relay = true},
+  static CanMsg HONDA_RADARLESS_LONG_TX_MSGS[] = {{0xE4, 0, 5, .check_relay = true}, {0x296, 2, 4, .check_relay = false}, {0x33D, 0, 8, .check_relay = true},
+                                                  {0x1C8, 0, 8, .check_relay = true, .disable_static_blocking = true},
                                                   {0x30C, 0, 8, .check_relay = true}};  // Bosch radarless w/ gas and brakes
 
   static CanMsg HONDA_CANFD_TX_MSGS[] = {{0xE4, 0, 5, .check_relay = true}, {0x296, 0, 4, .check_relay = false}, {0x33D, 0, 8, .check_relay = true}};
@@ -457,6 +463,7 @@ static safety_config honda_bosch_init(uint16_t param) {
 
   honda_hw = HONDA_BOSCH;
   honda_brake_switch_prev = false;
+  honda_acc_control_last_ts = 0U;
   honda_bosch_radarless = GET_FLAG(param, HONDA_PARAM_RADARLESS);
   honda_bosch_canfd = GET_FLAG(param, HONDA_PARAM_BOSCH_CANFD);
   // Checking for alternate brake override from safety parameter
@@ -501,6 +508,25 @@ static safety_config honda_bosch_init(uint16_t param) {
   return ret;
 }
 
+static bool honda_bosch_fwd_hook(int bus_num, int addr) {
+  bool block_msg = false;
+
+  // For HONDA_BOSCH_RADARLESS ACC_CONTROL forwarding.
+  // Forward whole ACC_CONTROL (AEB) message when OP is disengaged and not transmitting ACC_CONTROL
+  // Timeout handles OP disengaging before controls_allowed goes to false.
+  // Allow up to 3 missing frames (60ms) before resuming forwarding. A ~260ms gap causes a cruise fault.
+  static const uint32_t HONDA_ACC_CONTROL_TIMEOUT = 60000U;  // us
+
+  if (honda_bosch_radarless && honda_bosch_long && (bus_num == 2)) {
+    if (addr == 0x1C8) {
+      block_msg = controls_allowed &&
+                  (safety_get_ts_elapsed(microsecond_timer_get(), honda_acc_control_last_ts) < HONDA_ACC_CONTROL_TIMEOUT);
+    }
+  }
+
+  return block_msg;
+}
+
 static bool honda_nidec_fwd_hook(int bus_num, int addr) {
   bool block_msg = false;
 
@@ -527,6 +553,7 @@ const safety_hooks honda_bosch_hooks = {
   .init = honda_bosch_init,
   .rx = honda_rx_hook,
   .tx = honda_tx_hook,
+  .fwd = honda_bosch_fwd_hook,
   .get_counter = honda_get_counter,
   .get_checksum = honda_get_checksum,
   .compute_checksum = honda_compute_checksum,
