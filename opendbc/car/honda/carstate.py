@@ -221,6 +221,8 @@ class CarState(CarStateBase, CarStateExt):
       self.stock_brake = cp_cam.vl["BRAKE_COMMAND"]
     if self.CP.flags & HondaFlags.BOSCH_RADARLESS:
       self.lkas_hud = cp_cam.vl["LKAS_HUD"]
+      # needed to forward the camera's ACC_HUD verbatim while openpilot is disengaged
+      self.acc_hud = cp_cam.vl["ACC_HUD"]
 
     if self.CP.enableBsm:
       # BSM messages are on B-CAN, requires a panda forwarding B-CAN messages to CAN 0
