@@ -28,6 +28,18 @@ class CarStateExt:
     cp = can_parsers[Bus.pt]
     cp_cam = can_parsers[Bus.cam]
 
+    # self is the CarState instance, so the tracker carstate.py updates is visible here
+    if self.hud_object_tracker is not None:
+      # Dedicated single-lead distance (cm; 65535 = no lead), updated faster than
+      # the object tracks. radard fuses it into the vision lead's speed estimate.
+      raw_lead = cp_cam.vl["CAMERA_LEAD"]["LEAD_DISTANCE"]
+      lead_valid = 0 < raw_lead < CAMERA_LEAD_NO_LEAD
+      ret_sp.cameraLeadDistance = float(raw_lead) * CM_TO_M if lead_valid else 0.0
+      ret_sp.cameraLeadValid = lead_valid
+      ret_sp.hudObjects = [structs.CarStateSP.HudObject(slot=t.slot, objectId=t.object_id, dRel=t.d_rel,
+                                                        yRel=t.y_rel, valid=t.valid, isLeadCar=t.is_lead_car)
+                           for t in self.hud_object_tracker.snapshot()]
+
     if self.CP_SP.flags & HondaFlagsSP.HAS_CAMERA_MESSAGES:
       speed_bus = cp if (self.CP.carFingerprint in (HONDA_BOSCH - HONDA_BOSCH_RADARLESS - HONDA_BOSCH_CANFD)) else cp_cam
       speed_limit_raw = speed_bus.vl["CAMERA_MESSAGES"]["SPEED_LIMIT_SIGN"] % 32
