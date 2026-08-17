@@ -262,6 +262,12 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
           if not self.CP_SP.enableGasInterceptor:
             self.gas = pcm_accel / self.params.NIDEC_GAS_MAX
 
+    # Speed limit sign forwarding
+    if self.frame % 2 == 0 and (self.CP.flags & HondaFlags.BOSCH_RADARLESS):
+      can_sends.append(hondacan.create_speed_limit_dash_display(self.packer, self.CAN.pt, CC_SP.speedLimit))
+    if self.frame % 10 == 0 and (self.CP.flags & HondaFlags.BOSCH_RADARLESS):
+      can_sends.append(hondacan.create_camera_messages(self.packer, self.CAN.pt, CS.camera_messages, CC_SP.speedLimit))
+
     cruise_setting = 0
 
     # Radarless: when stock LKAS is active, touch steering wheel nag causes ACC disengagement. Disable LKAS automatically
