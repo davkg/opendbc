@@ -3,7 +3,7 @@ import numpy as np
 from opendbc.can import CANPacker
 from opendbc.car import Bus, DT_CTRL, rate_limit, make_tester_present_msg, structs
 from opendbc.car.honda import hondacan
-from opendbc.car.honda.values import CAR, CruiseButtons, HondaFlags, CarControllerParams
+from opendbc.car.honda.values import CAR, CruiseButtons, CruiseSettings, HondaFlags, CarControllerParams
 from opendbc.car.interfaces import CarControllerBase
 
 from opendbc.sunnypilot.car.honda.mads import MadsCarController
@@ -114,6 +114,9 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
     self.gas = 0.0
     self.brake = 0.0
     self.last_torque = 0.0
+
+    self.lkas_button_send_remaining = 0
+    self.last_lkas_button_frame = 0
 
   def update(self, CC, CC_SP, CS, now_nanos):
     MadsCarController.update(self, self.CP, CC, CC_SP)
@@ -259,9 +262,29 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
           if not self.CP_SP.enableGasInterceptor:
             self.gas = pcm_accel / self.params.NIDEC_GAS_MAX
 
+    cruise_setting = 0
+
+    # Radarless: when stock LKAS is active, touch steering wheel nag causes ACC disengagement. Disable LKAS automatically
+    # and block driver LKAS button from reaching camera
+    if (self.CP.flags & HondaFlags.BOSCH_RADARLESS) and CC.enabled and self.frame % 4 == 0:
+      if self.lkas_button_send_remaining == 0 and CS.lkas_hud["LKAS_READY"] and self.frame >= self.last_lkas_button_frame + 500:
+        self.lkas_button_send_remaining = 3
+
+      if self.lkas_button_send_remaining > 0:
+        self.last_lkas_button_frame = self.frame
+        self.lkas_button_send_remaining -= 1
+        cruise_setting = CruiseSettings.LKAS
+      elif CS.cruise_setting == CruiseSettings.LKAS:
+        cruise_setting = 0  # suppress the driver's lkas_button so the camera can't re-enable stock LKAS
+      else:
+        cruise_setting = CS.cruise_setting  # pass distance_adj / none through to the camera
+
+      can_sends.append(hondacan.spam_buttons_command(self.packer, self.CAN, CS.cruise_buttons, cruise_setting, self.CP))
+
     # Intelligent Cruise Button Management
-    can_sends.extend(IntelligentCruiseButtonManagementInterface.update(self, CC_SP, self.packer, self.frame,
-                                                                       self.last_button_frame, self.CAN))
+    if not cruise_setting:
+      can_sends.extend(IntelligentCruiseButtonManagementInterface.update(self, CC_SP, self.packer, self.frame,
+                                                                         self.last_button_frame, self.CAN))
 
     new_actuators = actuators.as_builder()
     new_actuators.speed = self.speed

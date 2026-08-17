@@ -524,6 +524,13 @@ static bool honda_bosch_fwd_hook(int bus_num, int addr) {
     }
   }
 
+  // Block the stock SCM_BUTTONS (0x296) from reaching the camera while engaged; OP authors its own
+  // stream on bus 2 (driver buttons passed through, lkas_button taken over) so it can disable stock
+  // LKAS. Forwarded normally when disengaged so the driver can still operate cruise.
+  if (honda_bosch_radarless && honda_bosch_long && controls_allowed && (bus_num == 0) && (addr == 0x296)) {
+    block_msg = true;
+  }
+
   return block_msg;
 }
 

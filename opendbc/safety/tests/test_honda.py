@@ -665,30 +665,32 @@ class TestHondaBoschRadarlessLongSafety(common.LongitudinalAccelSafetyTest, Hond
     base = TestHondaBoschRadarlessLongSafety.FWD_BLACKLISTED_ADDRS[2]
     cam_fwd = [a for a in base if a != 0x1C8]  # stock 0x1C8 forwarded from camera
     cam_blocked = list(base)                   # OP transmitting ACC_CONTROL -> stock 0x1C8 blocked
+    # stock SCM_BUTTONS (0x296) on the pt bus is blocked from the camera while engaged; OP authors its own
+    scm = {0: [0x296]}
 
     # OP not transmitting ACC_CONTROL -> stock 0x1C8 forwards
     self.safety.set_controls_allowed(True)
     self.safety.set_timer(int(1e6))  # last ACC_CONTROL tx (init=0) is long stale
-    self.FWD_BLACKLISTED_ADDRS = {2: cam_fwd}
+    self.FWD_BLACKLISTED_ADDRS = {2: cam_fwd, **scm}
     super().test_fwd_hook()
 
     # OP engaged and actively transmitting ACC_CONTROL -> stock 0x1C8 blocked
     self.safety.set_timer(int(1e6))
     self.assertTrue(self._tx(self._accel_msg(0)))  # arms the baton-handover timestamp
-    self.FWD_BLACKLISTED_ADDRS = {2: cam_blocked}
+    self.FWD_BLACKLISTED_ADDRS = {2: cam_blocked, **scm}
     super().test_fwd_hook()
 
     # controls_allowed cleared (e.g. disengage while braking at a stop) -> hand back to the camera
-    # immediately, even though OP's last transmit is still fresh
+    # immediately, even though OP's last transmit is still fresh. Stock SCM_BUTTONS forwards again too.
     self.safety.set_controls_allowed(False)
     self.FWD_BLACKLISTED_ADDRS = {2: cam_fwd}
     super().test_fwd_hook()
 
     # OP's ACC_CONTROL goes stale while still engaged (CC.enabled dropped, controls_allowed latched) ->
-    # stock 0x1C8 resumes forwarding after the timeout
+    # stock 0x1C8 resumes forwarding after the timeout; 0x296 stays blocked while controls_allowed
     self.safety.set_controls_allowed(True)
     self.safety.set_timer(int(2e6))
-    self.FWD_BLACKLISTED_ADDRS = {2: cam_fwd}
+    self.FWD_BLACKLISTED_ADDRS = {2: cam_fwd, **scm}
     super().test_fwd_hook()
 
 
