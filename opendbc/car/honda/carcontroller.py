@@ -120,6 +120,7 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
     self.lkas_button_send_remaining = 0
     self.last_lkas_button_frame = 0
 
+    self.hud_object_author = hud_objects.HudObjectAuthor()
     self.lane_path_fitter = lane_path.LanePathFitter()
     self.dash_lane = lane_path.DashLane([lane_path.OFFSET_UNAVAILABLE] * lane_path.NUM_PTS, 0.0, False, False)
 
@@ -275,6 +276,14 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
       # Important: same mux for lane_path and hud_objects. Lane display freezes if muxes don't match.
       mux = lane_path.MUX_CYCLE[(self.frame // 2) % len(lane_path.MUX_CYCLE)]
       can_sends.append(lane_path.create_lane_path(self.packer, self.CAN.lkas, self.dash_lane.offsets, mux))
+
+      tracks = CS.hud_object_tracker.snapshot()
+      if self.CP.openpilotLongitudinalControl:
+        # For OP long, replace lead car and forward rest of objects
+        can_sends.append(self.hud_object_author.create(self.packer, self.CAN.lkas, lead, tracks, mux, now_nanos * 1e-9))
+      else:
+        # For ACC, forward objects but with our mux
+        can_sends.append(hud_objects.forward_hud_object(self.packer, self.CAN.lkas, mux, tracks))
 
     if self.frame % 20 == 0 and (self.CP.flags & HondaFlags.BOSCH_RADARLESS):
       # COUNTER_2 trails the packer's COUNTER (frame//20 % 4) by one. TODO: do we need the - 1 trail?
