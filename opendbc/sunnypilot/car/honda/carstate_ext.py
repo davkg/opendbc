@@ -8,6 +8,8 @@ from enum import StrEnum
 
 from opendbc.car import Bus, structs
 from opendbc.can.parser import CANParser
+from opendbc.car.common.conversions import Conversions as CV
+from opendbc.car.honda.values import HONDA_BOSCH, HONDA_BOSCH_CANFD, HONDA_BOSCH_RADARLESS
 from opendbc.sunnypilot.car.honda.values_ext import HondaFlagsSP
 
 # CAMERA_LEAD.LEAD_DISTANCE is a dedicated single-lead distance in centimeters, with an all-ones
@@ -37,6 +39,11 @@ class CarStateExt:
       ret_sp.hudObjects = [structs.CarStateSP.HudObject(slot=t.slot, objectId=t.object_id, dRel=t.d_rel,
                                                         yRel=t.y_rel, valid=t.valid, isLeadCar=t.is_lead_car)
                            for t in self.hud_object_tracker.snapshot()]
+
+    if self.CP_SP.flags & HondaFlagsSP.HAS_CAMERA_MESSAGES:
+      speed_bus = cp if (self.CP.carFingerprint in (HONDA_BOSCH - HONDA_BOSCH_RADARLESS - HONDA_BOSCH_CANFD)) else cp_cam
+      speed_limit_raw = speed_bus.vl["CAMERA_MESSAGES"]["SPEED_LIMIT_SIGN"] % 32
+      ret_sp.speedLimit = speed_limit_raw * 5.0 * CV.MPH_TO_MS if (1 <= speed_limit_raw <= 17) else 0.0
 
     if self.CP_SP.flags & HondaFlagsSP.NIDEC_HYBRID:
       ret.accFaulted = bool(cp.vl["HYBRID_BRAKE_ERROR"]["BRAKE_ERROR_1"] or cp.vl["HYBRID_BRAKE_ERROR"]["BRAKE_ERROR_2"])
