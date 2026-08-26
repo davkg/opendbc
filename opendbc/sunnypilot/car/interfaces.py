@@ -15,6 +15,7 @@ from opendbc.car.can_definitions import CanRecvCallable, CanSendCallable
 from opendbc.car.hyundai.values import HyundaiFlags
 from opendbc.car.subaru.values import SubaruFlags
 from opendbc.car.toyota.values import ToyotaSafetyFlags
+from opendbc.sunnypilot.car.honda.values_ext import HondaSafetyFlagsSP
 from opendbc.sunnypilot.car.hyundai.enable_radar_tracks import enable_radar_tracks as hyundai_enable_radar_tracks
 from opendbc.sunnypilot.car.hyundai.longitudinal.helpers import LongitudinalTuningType
 from opendbc.sunnypilot.car.hyundai.values import HyundaiFlagsSP
@@ -88,6 +89,7 @@ def setup_interfaces(CI, CP: structs.CarParams, CP_SP: structs.CarParamsSP,
   _initialize_coop_steering(CP, CP_SP, params_dict)
   _initialize_tesla_mads_screen_button(CP, CP_SP, params_dict)
   _initialize_radar_tracks(CP, CP_SP, can_recv, can_send)
+  _initialize_honda(CP, CP_SP, params_dict)
   _initialize_stop_and_go(CP, CP_SP, params_dict)
   _initialize_toyota(CP, CP_SP, params_dict)
 
@@ -138,6 +140,12 @@ def _initialize_radar_tracks(CP: structs.CarParams, CP_SP: structs.CarParamsSP,
     if CP.flags & HyundaiFlags.MANDO_RADAR and (CP.radarUnavailable or CP_SP.flags & HyundaiFlagsSP.ENHANCED_SCC):
       tracks_enabled = hyundai_enable_radar_tracks(can_recv, can_send, bus=0, addr=0x7d0)
       CP.radarUnavailable = not tracks_enabled
+
+
+def _initialize_honda(CP: structs.CarParams, CP_SP: structs.CarParamsSP, params_dict: dict[str, str]) -> None:
+  if CP.brand == 'honda' and CP.openpilotLongitudinalControl:
+    if int(params_dict.get("LongitudinalActiveWithGas", 0)) == 1:
+      CP_SP.safetyParam |= HondaSafetyFlagsSP.LONGITUDINAL_ACTIVE_WITH_GAS
 
 
 def _initialize_stop_and_go(CP: structs.CarParams, CP_SP: structs.CarParamsSP, params_dict: dict[str, str]) -> None:

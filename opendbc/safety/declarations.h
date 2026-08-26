@@ -275,6 +275,7 @@ extern int cruise_button_prev;
 extern bool safety_rx_checks_invalid;
 extern bool enable_gas_interceptor;
 extern int gas_interceptor_prev;
+extern bool longitudinal_allowed_with_gas;
 
 // for safety modes with torque steering control
 extern int desired_torque_last;       // last desired steer torque

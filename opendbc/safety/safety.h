@@ -62,6 +62,7 @@ int cruise_button_prev = 0;
 bool safety_rx_checks_invalid = false;
 bool enable_gas_interceptor = false;
 int gas_interceptor_prev = 0;
+bool longitudinal_allowed_with_gas = false;
 
 // for safety modes with torque steering control
 int desired_torque_last = 0;       // last desired steer torque
@@ -464,6 +465,8 @@ int set_safety_hooks(uint16_t mode, uint16_t param) {
   // gas interceptor
   enable_gas_interceptor = false;
   gas_interceptor_prev = 0;
+
+  longitudinal_allowed_with_gas = false;
 
   // reset samples
   reset_sample(&vehicle_speed);

@@ -656,6 +656,23 @@ class TestHondaBoschRadarlessLongSafety(common.LongitudinalAccelSafetyTest, Hond
         should_tx = controls_allowed and self.MIN_ACCEL <= accel <= self.MAX_ACCEL
         self.assertEqual(should_tx, self._tx(self._accel_msg(accel)), (controls_allowed, accel))
 
+  def test_longitudinal_active_with_gas(self):
+    # opt-in longitudinal with gas
+    self.safety.set_current_safety_param_sp(HondaSafetyFlagsSP.LONGITUDINAL_ACTIVE_WITH_GAS)
+    self.safety.set_safety_hooks(CarParams.SafetyModel.hondaBosch, HondaSafetyFlags.RADARLESS | HondaSafetyFlags.BOSCH_LONG)
+    self.safety.init_tests()
+    try:
+      self._rx(self._user_gas_msg(0))
+      self.safety.set_controls_allowed(True)
+      self._rx(self._user_gas_msg(1))
+      self.assertTrue(self.safety.get_controls_allowed())
+      self.assertTrue(self.safety.get_longitudinal_allowed())
+      self.assertTrue(self._tx(self._accel_msg(self.MAX_ACCEL)))
+      self._rx(self._user_gas_msg(0))
+      self.assertTrue(self.safety.get_longitudinal_allowed())
+    finally:
+      self.safety.set_current_safety_param_sp(0)
+
   # Longitudinal doesn't need to send buttons
   def test_spam_cancel_safety_check(self):
     pass

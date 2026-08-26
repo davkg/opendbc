@@ -481,6 +481,9 @@ static safety_config honda_bosch_init(uint16_t param) {
   honda_bosch_long = GET_FLAG(param, HONDA_PARAM_BOSCH_LONG);
 #endif
 
+  const uint16_t HONDA_PARAM_SP_LONG_ACTIVE_WITH_GAS = 4;
+  longitudinal_allowed_with_gas = GET_FLAG(current_safety_param_sp, HONDA_PARAM_SP_LONG_ACTIVE_WITH_GAS);
+
   safety_config ret;
   if (honda_bosch_radarless || honda_bosch_canfd) {
     if (honda_alt_brake_msg) {
