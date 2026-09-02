@@ -136,7 +136,8 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
       accel = actuators.accel
       # Low speed decel (slow to stop) tune; Civic Hybrid underdelivers decel below 3mph
       if (self.CP.flags & HondaFlags.BOSCH_RADARLESS) and accel < 0.0:
-        accel += float(np.interp(CS.out.vEgo, [1.12, 1.34], [-0.15, 0.0]))
+        accel += (float(np.interp(accel, [-0.90, -0.40, 0.0], [0.0, -0.11, 0.0])) *
+                  float(np.interp(CS.out.vEgo, [1.12, 1.34], [1.0, 0.0])))
       gas, brake = compute_gas_brake(actuators.accel, CS.out.vEgo, self.CP)
     else:
       accel = 0.0
