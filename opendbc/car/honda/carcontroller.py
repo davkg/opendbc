@@ -138,6 +138,9 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
       if (self.CP.flags & HondaFlags.BOSCH_RADARLESS) and accel < 0.0:
         accel += (float(np.interp(accel, [-1.00, -0.65, 0.0], [0.0, -0.15, 0.0])) *
                   float(np.interp(CS.out.vEgo, [1.12, 1.34], [1.0, 0.0])))
+      # Smooth launch test
+      if (self.CP.flags & HondaFlags.BOSCH_RADARLESS) and self.accel < 0.0:
+        accel = min(accel, max(self.accel, -0.25) + 1.5 * (2 * DT_CTRL))
       gas, brake = compute_gas_brake(actuators.accel, CS.out.vEgo, self.CP)
     else:
       accel = 0.0
