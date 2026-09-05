@@ -90,13 +90,13 @@ def create_acc_commands(packer, CAN, enabled, active, accel, gas, stopping_count
   # common ACC_CONTROL values
   acc_control_values = {
     'ACCEL_COMMAND': accel_command,
-    'STANDSTILL': standstill,
+    'STANDSTILL': standstill, # Enable braking for Civic Hybrid
   }
 
   if CP.flags & HondaFlags.BOSCH_RADARLESS:
     acc_control_values.update({
       "CONTROL_ON": enabled,
-      "IDLESTOP_ALLOW": braking, # Enable braking for Civic Hybrid
+      "IDLESTOP_ALLOW": 1 if active else 0,
     })
   else:
     acc_control_values.update({
