@@ -112,8 +112,8 @@ class CarInterface(CarInterfaceBase):
 
     elif candidate == CAR.HONDA_CIVIC_2022:
       ret.lateralParams.torqueBP, ret.lateralParams.torqueV = [[0, 3840], [0, 3840]]
-      ret.lateralTuning.pid.kpBP, ret.lateralTuning.pid.kpV = [[0, 10], [0.0533, 0.5333]]
-      ret.lateralTuning.pid.kiBP, ret.lateralTuning.pid.kiV = [[0, 10], [0.0133, 0.1333]]
+      ret.lateralTuning.pid.kpBP, ret.lateralTuning.pid.kpV = [[0, 10], [0.0427, 0.4267]]
+      ret.lateralTuning.pid.kiBP, ret.lateralTuning.pid.kiV = [[0, 10], [0.0107, 0.1067]]
       ret.lateralTuning.pid.kf = 0.000064  # 0.00006 * 4096/3840
 
     elif candidate == CAR.HONDA_ACCORD:
