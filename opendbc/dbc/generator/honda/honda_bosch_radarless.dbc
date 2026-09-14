@@ -21,10 +21,9 @@ BO_ 456 ACC_CONTROL: 8 XXX
  SG_ COUNTER : 61|2@0+ (1,0) [0|3] "" XXX
 
 BO_ 457 CAMERA_LEAD: 8 CAM
- SG_ NEW_SIGNAL_2 : 0|4@1+ (1,0) [0|15] "" XXX
- SG_ NEW_SIGNAL_1 : 4|4@1+ (1,0) [0|15] "" XXX
+ SG_ SET_SPEED : 7|8@0+ (1,0) [0|255] "kph" XXX
  SG_ LEAD_DISTANCE : 15|16@0+ (1,0) [0|65535] "cm" XXX
- SG_ CAR_SPEED : 31|16@0+ (0.03124,0) [0|65535] "kph" XXX
+ SG_ TARGET_LEAD_DISTANCE : 31|16@0+ (1,0) [0|65535] "cm" XXX
  SG_ CHECKSUM : 59|4@0+ (1,0) [0|15] "" XXX
  SG_ COUNTER : 61|2@0+ (1,0) [0|3] "" XXX
 
@@ -83,7 +82,6 @@ BO_ 254913108 LKAS_HUD_2: 8 ADAS
 
 CM_ SG_ 456 IDLESTOP_ALLOW "allows car to turn off engine at a standstill";
 CM_ SG_ 456 STANDSTILL "set to 1 when camera requests -4.0 m/s^2";
-CM_ SG_ 457 CAR_SPEED "Ego speed, not lead speed";
 CM_ SG_ 495 SPEED_LIMIT "Defaults to 0xFF if no speed limit found";
 CM_ SG_ 114120023 MUX "1-10, 17-26, 33-42, 49-58 map to the same 10 objects for 5Hz frequency each";
 CM_ SG_ 114120023 IS_LEAD_CAR "1 when this track is the lead car; the lead, when present, is always track index 1";
