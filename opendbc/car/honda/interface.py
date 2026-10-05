@@ -111,10 +111,11 @@ class CarInterface(CarInterfaceBase):
           CarControllerParams.BOSCH_GAS_LOOKUP_V = [0, 750]
 
     elif candidate == CAR.HONDA_CIVIC_2022:
-      ret.lateralParams.torqueBP, ret.lateralParams.torqueV = [[0, 3840], [0, 3840]]
-      ret.lateralTuning.pid.kpBP, ret.lateralTuning.pid.kpV = [[0, 10], [0.052, 0.52]]
-      ret.lateralTuning.pid.kiBP, ret.lateralTuning.pid.kiV = [[0, 10], [0.013, 0.13]]
-      ret.lateralTuning.pid.kf = 0.000064  # 0.00006 * 4096/3840
+      # gains are the road-validated 3840 tune scaled by 3840/5120 (effective gain = k * STEER_MAX)
+      ret.lateralParams.torqueBP, ret.lateralParams.torqueV = [[0, 5120], [0, 5120]]
+      ret.lateralTuning.pid.kpBP, ret.lateralTuning.pid.kpV = [[0, 10], [0.039, 0.39]]
+      ret.lateralTuning.pid.kiBP, ret.lateralTuning.pid.kiV = [[0, 10], [0.00975, 0.0975]]
+      ret.lateralTuning.pid.kf = 0.000048
 
     elif candidate == CAR.HONDA_ACCORD:
       ret.lateralParams.torqueBP, ret.lateralParams.torqueV = [[0, 4096], [0, 4096]]  # TODO: determine if there is a dead zone at the top end
