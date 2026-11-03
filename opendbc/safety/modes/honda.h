@@ -43,6 +43,7 @@ static bool honda_bosch_long = false;
 static bool honda_bosch_radarless = false;
 static bool honda_bosch_canfd = false;
 static uint32_t honda_acc_control_last_ts = 0U;  // time of last tx'd ACC_CONTROL (0x1C8)
+static uint32_t honda_buttons_last_ts = 0U;  // time of last tx'd SCM_BUTTONS (0x296)
 static bool honda_nidec_hybrid = false;
 typedef enum {HONDA_NIDEC, HONDA_BOSCH} HondaHw;
 static HondaHw honda_hw = HONDA_NIDEC;
@@ -340,6 +341,9 @@ static bool honda_tx_hook(const CANPacket_t *msg) {
       tx = false;
     }
   }
+  if (tx && msg_matches(msg, 0x296U, bus_buttons)) {
+    honda_buttons_last_ts = microsecond_timer_get();
+  }
 
   // Only tester present ("\x02\x3E\x80\x00\x00\x00\x00\x00") allowed on diagnostics address
   if (msg->addr == 0x18DAB0F1U) {
@@ -521,6 +525,7 @@ static safety_config honda_bosch_init(uint16_t param) {
   honda_hw = HONDA_BOSCH;
   honda_brake_switch_prev = false;
   honda_acc_control_last_ts = 0U;
+  honda_buttons_last_ts = 0U;
   honda_bosch_radarless = GET_FLAG(param, HONDA_PARAM_RADARLESS);
   honda_bosch_canfd = GET_FLAG(param, HONDA_PARAM_BOSCH_CANFD);
   // Checking for alternate brake override from safety parameter
@@ -584,11 +589,13 @@ static bool honda_bosch_fwd_hook(int bus_num, int addr) {
     }
   }
 
-  // Block the stock SCM_BUTTONS (0x296) from reaching the camera while engaged; OP authors its own
-  // stream on bus 2 (driver buttons passed through, lkas_button taken over) so it can disable stock
-  // LKAS. Forwarded normally when disengaged so the driver can still operate cruise.
+  // Block the stock SCM_BUTTONS (0x296) from reaching the camera while OP authors its own stream on
+  // bus 2 (driver buttons passed through, lkas_button taken over) so it can disable stock LKAS.
+  // Same baton as ACC_CONTROL: forwarded whenever OP isn't sending, e.g. an engagement OP refused,
+  // since ~1 s without buttons faults the camera's ACC and FCM. Timeout is 3 frames at OP's 25 Hz.
+  static const uint32_t HONDA_BUTTONS_TIMEOUT = 120000U;  // us
   if (honda_bosch_radarless && honda_bosch_long && controls_allowed && (bus_num == 0) && (addr == 0x296)) {
-    block_msg = true;
+    block_msg = safety_get_ts_elapsed(microsecond_timer_get(), honda_buttons_last_ts) < HONDA_BUTTONS_TIMEOUT;
   }
 
   return block_msg;
